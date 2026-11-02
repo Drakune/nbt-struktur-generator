@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NBT Struktur-Generator</title>
+<script>try { const t = localStorage.getItem('nbtgen.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
 <style>
   /* Werkstatt-Zeichentisch: Andesit-Panels, Blaupausen-Ansicht, Messing für Hauptaktionen */
   :root {
@@ -11,10 +12,24 @@
     --ink: #2a2926; --ink-soft: #57554f; --ink-faint: #7a7872;
     --bp: #173a5e; --bp-deep: #102b47; --bp-line: #5f8fbf; --bp-text: #d6e6f5; --bp-soft: #9fbcd8;
     --brass: #b5832a; --brass-hi: #d9a548; --brass-lo: #8a5f17; --brass-ink: #2b1d05;
-    --err: #a3271b; --ok: #3d6b2a; --warn: #8a5f17;
+    --err: #a3271b; --ok: #3d6b2a; --warn: #8a5f17; --link: var(--brass-lo);
+    --hover: #cfcec8; --hover-ghost: #b6b5af; --field: #dcdbd5; --field-shadow: #bdbcb6; --code-bg: #e6e5df; --well: #cfcec8;
+    --base-bg: #b9c4cf; --base-border: #557391; --base-hi: #d3dce5; --base-lo: #8fa3b8; --base-ink: var(--bp-deep);
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232a2926' stroke-width='3' stroke-linecap='square'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    color-scheme: light;
     --display: "Pixelify Sans", "Atkinson Hyperlegible", system-ui, sans-serif;
     --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: ui-monospace, "JetBrains Mono", Consolas, monospace;
+  }
+  /* Dunkles Design: Tiefenschiefer statt Andesit (Standard) */
+  :root[data-theme="dark"] {
+    --stone: #35353a; --stone-hi: #48484e; --stone-lo: #222226; --stone-edge: #17171a; --stone-deep: #121214;
+    --ink: #e7e5dd; --ink-soft: #aeaba2; --ink-faint: #85827a;
+    --err: #ff8a7a; --ok: #8fd06d; --warn: #e3ae52; --link: var(--brass-hi);
+    --hover: #3e3e44; --hover-ghost: #2b2b30; --field: #26262a; --field-shadow: #1b1b1e; --code-bg: #212125; --well: #2c2c31;
+    --base-bg: #1f3247; --base-border: #3f6488; --base-hi: #2c4560; --base-lo: #142333; --base-ink: var(--bp-text);
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23e7e5dd' stroke-width='3' stroke-linecap='square'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--stone); color: var(--ink); font: 15px/1.5 var(--body); }
@@ -22,8 +37,8 @@
   button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  a { color: var(--brass-lo); text-underline-offset: 2px; }
-  code { font-family: var(--mono); font-size: 12.5px; background: var(--stone-hi); padding: 1px 5px; border-radius: 3px; word-break: break-all; }
+  a { color: var(--link); text-underline-offset: 2px; }
+  code { font-family: var(--mono); font-size: 12.5px; background: var(--field); padding: 1px 5px; border-radius: 3px; word-break: break-all; }
   [hidden] { display: none !important; }
   :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
@@ -44,7 +59,7 @@
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px;
     border: 2px solid var(--stone-deep); border-radius: 2px; background: var(--stone); white-space: nowrap;
     box-shadow: inset 2px 2px 0 var(--stone-hi), inset -2px -2px 0 var(--stone-lo); }
-  .btn:hover:not(:disabled) { background: #cfcec8; }
+  .btn:hover:not(:disabled) { background: var(--hover); }
   .btn:active:not(:disabled) { box-shadow: inset 2px 2px 0 var(--stone-lo), inset -2px -2px 0 var(--stone-hi); }
   .btn:disabled { opacity: .5; cursor: default; }
   .btn.primary { background: var(--brass); border-color: var(--brass-lo); color: var(--brass-ink); font-weight: 700;
@@ -52,12 +67,12 @@
   .btn.primary:hover:not(:disabled) { background: #c18f33; }
   .btn.primary:active:not(:disabled) { box-shadow: inset 2px 2px 0 var(--brass-lo), inset -2px -2px 0 var(--brass-hi); }
   .btn.ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--ink-soft); }
-  .btn.ghost:hover:not(:disabled) { background: #b6b5af; color: var(--ink); }
+  .btn.ghost:hover:not(:disabled) { background: var(--hover-ghost); color: var(--ink); }
   .btn.small { height: 30px; padding: 0 10px; font-size: 13.5px; }
   .btn.block { width: 100%; height: 48px; font-size: 16px; }
   .btn .chip { font-size: 13px; font-weight: 400; opacity: .8; }
   .icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 2px; background: transparent; color: var(--ink-soft); position: relative; }
-  .icon-btn:hover { background: #b6b5af; color: var(--ink); }
+  .icon-btn:hover { background: var(--hover-ghost); color: var(--ink); }
   .icon-btn.on { background: var(--stone-lo); color: #fff; box-shadow: inset 2px 2px 0 var(--stone-deep); }
   .dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: var(--ok); box-shadow: 0 0 0 2px var(--stone); }
   .btn .dot { position: static; box-shadow: none; }
@@ -83,13 +98,13 @@
   .label { display: block; font-size: 14px; font-weight: 700; color: var(--ink); margin: 0 0 6px; }
   .label .muted { font-weight: 400; }
   textarea, input[type=text], input[type=password], select {
-    width: 100%; background: var(--stone-hi); border: 2px solid var(--stone-deep); border-radius: 2px; padding: 9px 11px; outline: none; color: var(--ink);
-    box-shadow: inset 2px 2px 0 #bdbcb6; }
+    width: 100%; background: var(--field); border: 2px solid var(--stone-deep); border-radius: 2px; padding: 9px 11px; outline: none; color: var(--ink);
+    box-shadow: inset 2px 2px 0 var(--field-shadow); }
   textarea::placeholder, input::placeholder { color: var(--ink-faint); }
   textarea:focus, input:focus, select:focus { border-color: var(--brass-lo); }
   textarea { resize: vertical; min-height: 128px; line-height: 1.5; }
   select { appearance: none; padding-right: 30px; cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232a2926' stroke-width='3' stroke-linecap='square'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-image: var(--select-arrow);
     background-repeat: no-repeat; background-position: right 10px center; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .field { margin-bottom: 14px; }
@@ -108,16 +123,16 @@
   .card { margin-top: 18px; font-size: 14.5px; }
   .card h4 { margin: 0 0 6px; font: 700 15px/1.3 var(--body); display: flex; align-items: center; gap: 8px; }
   .card h4 .grow { flex: 1; }
-  .card.base { margin: 0 0 18px; padding: 12px 14px; background: #b9c4cf; border: 2px solid #557391;
-    box-shadow: inset 2px 2px 0 #d3dce5, inset -2px -2px 0 #8fa3b8; }
-  .card.base h4 { color: var(--bp-deep); }
+  .card.base { margin: 0 0 18px; padding: 12px 14px; background: var(--base-bg); border: 2px solid var(--base-border);
+    box-shadow: inset 2px 2px 0 var(--base-hi), inset -2px -2px 0 var(--base-lo); }
+  .card.base h4 { color: var(--base-ink); }
   .muted { color: var(--ink-soft); }
   .err { color: var(--err); white-space: pre-wrap; }
   .ok { color: var(--ok); font-weight: 700; }
   .warn { color: var(--warn); }
   #desc { white-space: pre-wrap; max-width: 70ch; }
   details.think summary { cursor: pointer; color: var(--ink-soft); font-size: 13.5px; margin-top: 6px; }
-  #thinking { max-height: 150px; overflow-y: auto; white-space: pre-wrap; color: var(--ink-soft); font-size: 13px; margin-top: 6px; padding: 8px 10px; background: var(--stone-hi); }
+  #thinking { max-height: 150px; overflow-y: auto; white-space: pre-wrap; color: var(--ink-soft); font-size: 13px; margin-top: 6px; padding: 8px 10px; background: var(--field); }
   .spinner { width: 12px; height: 12px; display: inline-block; vertical-align: -1px; margin-right: 8px; background: var(--brass);
     animation: blink 1s steps(2, jump-none) infinite; }
   @keyframes blink { 50% { background: var(--stone-lo); } }
@@ -127,7 +142,7 @@
   .row-btns .btn { flex: 1; }
 
   /* Code-Tab */
-  #code { flex: 1; min-height: 200px; font: 12.5px/1.55 var(--mono); resize: none; white-space: pre; background: #e6e5df; }
+  #code { flex: 1; min-height: 200px; font: 12.5px/1.55 var(--mono); resize: none; white-space: pre; background: var(--code-bg); }
 
   /* Ansicht: Blaupause mit Raster (wie Schematics in Create) */
   main#view { flex: 1; position: relative; min-width: 0; background-color: var(--bp);
@@ -164,7 +179,7 @@
     box-shadow: inset 2px 2px 0 var(--stone-hi), inset -2px -2px 0 var(--stone-lo); }
   .toggle.on { background: var(--stone-lo); color: #fff; box-shadow: inset 2px 2px 0 var(--stone-deep); }
   .toggle svg { width: 15px; height: 15px; }
-  input[type=range] { accent-color: var(--brass-lo); width: 150px; }
+  input[type=range] { accent-color: var(--brass-lo); width: 120px; }
   #layerVal { font-size: 14px; min-width: 70px; font-variant-numeric: tabular-nums; font-weight: 700; }
   #dropOverlay { position: fixed; inset: 0; display: none; place-items: center; z-index: 50; background: #102b47d9; pointer-events: none; }
   #dropOverlay div { border: 3px dashed var(--bp-text); padding: 40px 56px; text-align: center; color: #fff; font: 500 24px/1.2 var(--display); }
@@ -186,11 +201,11 @@
   .slot { position: relative; aspect-ratio: 1; border: 0; padding: 0; margin: 2px; background: #8b8b8b;
     box-shadow: inset 2px 2px 0 #373737, inset -2px -2px 0 #ffffff; display: grid; place-items: center; }
   .slot:hover { background: #a6a6a6; }
-  .slot img, .slot .solid { width: 64%; height: 64%; image-rendering: pixelated; }
+  .slot canvas, .slot .solid { width: 64%; height: 64%; image-rendering: pixelated; }
   .slot .solid { box-shadow: inset 0 0 0 1px #0004; }
   .slot svg.air { width: 58%; height: 58%; color: #e8e8e8; stroke-width: 1.6; }
   .slot .cnt { position: absolute; right: 3px; bottom: 1px; font: 700 13px/1 var(--body); color: #fff; text-shadow: 1px 1px 0 #3e3e3e, 2px 2px 0 #3e3e3e; pointer-events: none; }
-  .slot.hid img, .slot.hid .solid { opacity: .28; }
+  .slot.hid canvas, .slot.hid .solid { opacity: .28; }
   .slot .mark { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; display: grid; place-items: center; pointer-events: none; }
   .slot .mark svg { width: 12px; height: 12px; stroke-width: 3; }
   .slot .mark.noexp { left: auto; right: 3px; background: var(--err); color: #fff; }
@@ -213,10 +228,10 @@
   .dlg-body { padding: 18px; display: grid; gap: 16px; font-size: 14.5px; }
   .dlg-body p { margin: 0; color: var(--ink-soft); max-width: 68ch; }
   .dlg-body details summary { color: var(--ink); font-weight: 700; }
-  .dlg-body .card { margin: 0; padding: 14px; background: #cfcec8; box-shadow: inset 2px 2px 0 var(--stone-hi), inset -2px -2px 0 var(--stone-lo); border: 2px solid var(--stone-deep); }
+  .dlg-body .card { margin: 0; padding: 14px; background: var(--well); box-shadow: inset 2px 2px 0 var(--stone-hi), inset -2px -2px 0 var(--stone-lo); border: 2px solid var(--stone-deep); }
   .dropzone { border: 2px dashed var(--stone-deep); padding: 18px; text-align: center; color: var(--ink-soft); }
   .sources { display: grid; gap: 4px; }
-  .sources div { display: flex; align-items: center; gap: 8px; background: var(--stone-hi); padding: 7px 10px; font-size: 13.5px; }
+  .sources div { display: flex; align-items: center; gap: 8px; background: var(--field); padding: 7px 10px; font-size: 13.5px; }
   #toasts { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); display: grid; gap: 8px; z-index: 60; justify-items: center; }
   .toast { background: var(--stone); border: 2px solid var(--stone-deep); border-left: 6px solid var(--ok); padding: 10px 14px; font-size: 14px; max-width: 360px;
     box-shadow: inset 2px 2px 0 var(--stone-hi), 0 6px 0 #0000002e; transition: opacity .4s; }
@@ -255,6 +270,7 @@
   <div class="spacer"></div>
   <button class="btn ghost" id="openFile" title="Vorhandene .nbt-Datei öffnen (oder einfach hineinziehen)"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L7 8m5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="txt">Öffnen</span></button>
   <button class="btn ghost" id="openTextures" title="Minecraft-Texturen einrichten"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="txt">Texturen</span><span class="dot" id="texDot" hidden></span></button>
+  <button class="icon-btn" id="themeBtn" title="Helles Design"><svg viewBox="0 0 24 24" id="themeIcon"></svg></button>
   <button class="icon-btn" id="openSettings" title="Einstellungen: API-Key & Kosten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="dot" id="keyDot" hidden style="background:var(--warn)"></span></button>
   <div class="sep"></div>
   <input id="fileName" type="text" value="struktur" title="Dateiname für den Download" style="width:150px;height:36px;padding:6px 10px">
@@ -917,6 +933,17 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab
 document.querySelectorAll('dialog [data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
 document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
 $('openSettings').onclick = () => $('settingsDlg').showModal();
+// Hell/Dunkel: dunkel ist Standard, die Wahl wird gespeichert
+const SUN = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+const MOON = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $('themeIcon').innerHTML = t === 'dark' ? SUN : MOON;
+  $('themeBtn').title = t === 'dark' ? 'Helles Design' : 'Dunkles Design';
+  $('themeBtn').setAttribute('aria-label', $('themeBtn').title);
+}
+applyTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+$('themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; applyTheme(t); store.set('nbtgen.theme', t); };
 $('openTextures').onclick = $('emptyTex').onclick = () => {
   $('texVersion').value = mojangVersion();
   $('texCreate').checked = hasCreate() || !!structure?.names.some(n => n.startsWith('create:'));
@@ -1580,6 +1607,60 @@ function resize() {
   camera.aspect = r.width / Math.max(r.height, 1); camera.updateProjectionMatrix();
 }
 
+// PNG selbst dekodieren statt über <canvas> auszulesen: Browser mit Fingerprinting-Schutz
+// (Firefox resistFingerprinting, LibreWolf, Brave …) verrauschen Canvas-Readbacks absichtlich.
+async function decodePNG(blob) {
+  const b = new Uint8Array(await blob.arrayBuffer()), dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  if (dv.getUint32(0) !== 0x89504e47) throw new Error('kein PNG');
+  let p = 8, w = 0, h = 0, depth = 8, ct = 6, interlace = 0, pal = null, trns = null;
+  const idat = [];
+  while (p + 8 <= b.length) {
+    const len = dv.getUint32(p), type = String.fromCharCode(b[p + 4], b[p + 5], b[p + 6], b[p + 7]), d = b.subarray(p + 8, p + 8 + len);
+    if (type === 'IHDR') { w = dv.getUint32(p + 8); h = dv.getUint32(p + 12); depth = b[p + 16]; ct = b[p + 17]; interlace = b[p + 20]; }
+    else if (type === 'PLTE') pal = d;
+    else if (type === 'tRNS') trns = d;
+    else if (type === 'IDAT') idat.push(d);
+    else if (type === 'IEND') break;
+    p += 12 + len;
+  }
+  if (interlace) throw new Error('Interlaced-PNG nicht unterstützt');
+  const raw = new Uint8Array(await new Response(new Blob(idat).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
+  const ch = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[ct], bpp = Math.max(1, (ch * depth) >> 3), stride = Math.ceil(w * ch * depth / 8);
+  const px = new Uint8Array(stride * h);
+  let prev = new Uint8Array(stride);
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (stride + 1)], row = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1)), out = px.subarray(y * stride, (y + 1) * stride);
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? out[i - bpp] : 0, up = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+      let v = row[i];
+      if (f === 1) v += a; else if (f === 2) v += up; else if (f === 3) v += (a + up) >> 1;
+      else if (f === 4) { const pp = a + up - c, pa = Math.abs(pp - a), pb = Math.abs(pp - up), pc = Math.abs(pp - c); v += pa <= pb && pa <= pc ? a : pb <= pc ? up : c; }
+      out[i] = v & 255;
+    }
+    prev = out;
+  }
+  const smp = (y, i) => {
+    if (depth === 8) return px[y * stride + i];
+    if (depth === 16) return px[y * stride + i * 2];
+    const per = 8 / depth, byte = px[y * stride + Math.floor(i / per)];
+    return (byte >> ((per - 1 - (i % per)) * depth)) & ((1 << depth) - 1);
+  };
+  const scale = depth < 8 && ct !== 3 ? 255 / ((1 << depth) - 1) : 1;
+  const tv = k => trns ? (depth === 16 ? trns[k * 2] : trns[k * 2 + 1]) : -1;
+  const data = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const o = (y * w + x) * 4, s0 = x * ch;
+    let r, g, bl, al = 255;
+    if (ct === 6) { r = smp(y, s0); g = smp(y, s0 + 1); bl = smp(y, s0 + 2); al = smp(y, s0 + 3); }
+    else if (ct === 2) { r = smp(y, s0); g = smp(y, s0 + 1); bl = smp(y, s0 + 2); if (trns && r === tv(0) && g === tv(1) && bl === tv(2)) al = 0; }
+    else if (ct === 3) { const k = smp(y, s0); r = pal[k * 3]; g = pal[k * 3 + 1]; bl = pal[k * 3 + 2]; if (trns && k < trns.length) al = trns[k]; }
+    else if (ct === 4) { r = g = bl = smp(y, s0); al = smp(y, s0 + 1); }
+    else { const v = smp(y, s0); if (trns && v === tv(0)) al = 0; r = g = bl = Math.round(v * scale); }
+    data[o] = r; data[o + 1] = g; data[o + 2] = bl; data[o + 3] = al;
+  }
+  return { w, h, data };
+}
+
 // Einmal pro Struktur/Texturstand: Geometrie je Blockzustand + Textur-Atlas
 async function prepareRender() {
   if (!structure) return;
@@ -1590,33 +1671,37 @@ async function prepareRender() {
   const imgs = new Map();
   await Promise.all([...keys].map(async k => {
     const b = assets.get(k);
-    if (b instanceof Blob) try { imgs.set(k, await createImageBitmap(b)); } catch {}
+    if (b instanceof Blob) try { imgs.set(k, await decodePNG(b)); } catch {}
   }));
   let S = 16;
-  for (const im of imgs.values()) S = Math.max(S, Math.min(im.width, 64));
-  const list = [...imgs.keys()], cols = Math.ceil(Math.sqrt(list.length + 1)), rows = Math.ceil((list.length + 1) / cols);
+  for (const im of imgs.values()) S = Math.max(S, Math.min(im.w, 64));
   // Jede Zelle ist doppelt so groß wie die Textur: die Textur liegt in der Mitte, rundherum wird sie
   // gekachelt fortgesetzt. So laufen Mipmaps (gegen Flimmern auf Entfernung) nicht in Nachbartexturen.
-  const C = S * 2, P = S / 2;
-  const canvas = document.createElement('canvas');
-  canvas.width = cols * C; canvas.height = rows * C;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, C, C);      // Zelle 0: weiß für einfarbige Ersatzblöcke
-  const info = new Map();
+  const C = S * 2, P = S / 2, list = [...imgs.keys()];
+  const cols = Math.ceil(Math.sqrt(list.length + 1)), rows = Math.ceil((list.length + 1) / cols);
+  const W = cols * C, H = rows * C, atlas = new Uint8Array(W * H * 4);
+  for (let y = 0; y < C; y++) for (let x = 0; x < C; x++) atlas.fill(255, ((H - 1 - y) * W + x) * 4, ((H - 1 - y) * W + x) * 4 + 4);   // Zelle 0: weiß
+  const info = new Map(), texPx = new Map();
   list.forEach((k, i) => {
-    const cell = i + 1, cx0 = (cell % cols) * C, cy0 = Math.floor(cell / cols) * C, im = imgs.get(k);
-    const x = cx0 + P, y = cy0 + P;
-    ctx.save();
-    ctx.beginPath(); ctx.rect(cx0, cy0, C, C); ctx.clip();
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
-      ctx.drawImage(im, 0, 0, im.width, Math.min(im.width, im.height), x + dx * S, y + dy * S, S, S);   // animierte Texturen: erstes Bild
-    ctx.restore();
-    const d = ctx.getImageData(x, y, S, S).data;
+    const im = imgs.get(k), fw = im.w, cell = i + 1, ox = (cell % cols) * C, oy = Math.floor(cell / cols) * C;
+    // Textur auf S×S bringen (animierte Texturen: erstes Bild) und Transparenz einordnen
+    const t = new Uint8Array(S * S * 4);
     let zero = 0, part = 0;
-    for (let j = 3; j < d.length; j += 4) { if (d[j] === 0) zero++; else if (d[j] < 250) part++; }
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const so = ((Math.floor(y * fw / S)) * fw + Math.floor(x * fw / S)) * 4, to = (y * S + x) * 4;
+      t[to] = im.data[so]; t[to + 1] = im.data[so + 1]; t[to + 2] = im.data[so + 2]; t[to + 3] = im.data[so + 3];
+      const a = im.data[so + 3];
+      if (a === 0) zero++; else if (a < 250) part++;
+    }
+    for (let y = 0; y < C; y++) {
+      const sy = ((y - P) % S + S) % S, row = (H - 1 - (oy + y)) * W;   // Atlas-Zeilen von unten nach oben (DataTexture)
+      for (let x = 0; x < C; x++) {
+        const sx = ((x - P) % S + S) % S;
+        atlas.set(t.subarray((sy * S + sx) * 4, (sy * S + sx) * 4 + 4), (row + ox + x) * 4);
+      }
+    }
+    texPx.set(k, t);
     info.set(k, { cell, cls: part > S * S * 0.02 ? 'trans' : zero ? 'cut' : 'opaque' });
-    im.close?.();
   });
   // Verdeckt ein Block seine Nachbarn vollständig? (volle, undurchsichtige Würfelseiten in allen 6 Richtungen)
   const occl = geoms.map(g => {
@@ -1628,27 +1713,28 @@ async function prepareRender() {
     }
     return dirs.size === 6;
   });
-  const thumbs = new Map();
   if (prep?.tex) prep.tex.dispose();
   let tex = null;
   if (THREE) {
-    tex = new THREE.CanvasTexture(canvas);
+    tex = new THREE.DataTexture(atlas, W, H, THREE.RGBAFormat);
     tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestMipmapLinearFilter; tex.generateMipmaps = true;
     tex.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
   }
-  prep = { geoms, info, S, C, P, cols, W: canvas.width, H: canvas.height, occl, tex, canvas, thumbs };
+  prep = { geoms, info, S, C, P, cols, W, H, occl, tex, texPx, texCanvas: new Map(), thumbs: new Map() };
 }
-// Inventar-Symbol wie im Spiel: volle Blöcke als Würfel (oben, links, rechts), sonst flach – jeweils mit Biom-Färbung
+// Inventar-Symbol wie im Spiel: volle Blöcke als Würfel (oben, links, rechts), sonst flach – jeweils mit Biom-Färbung.
+// Ergebnis ist ein <canvas>, das direkt angezeigt wird (kein toDataURL, das Fingerprinting-Schutz verrauschen würde).
 function thumbFor(name) {
   if (!prep || !texSources.length) return null;
   if (prep.thumbs.has(name)) return prep.thumbs.get(name);
   const i = structure.names.indexOf(name), g = i >= 0 ? prep.geoms[i] : null;
   const ok = q => q.tex && prep.info.has(q.tex);
-  let url = null;
+  let c = null;
   if (g && g.quads.some(ok)) {
     const pick = (...dirs) => { for (const d of dirs) { const q = g.quads.find(q => ok(q) && q.full && q.dir === d); if (q) return q; } return g.quads.find(ok); };
-    const c = document.createElement('canvas');
+    c = document.createElement('canvas');
     c.width = c.height = 32;
     const ctx = c.getContext('2d');
     ctx.imageSmoothingEnabled = false;
@@ -1660,30 +1746,39 @@ function thumbFor(name) {
       const q = g.quads.find(q => ok(q) && !q.full && (q.dir === 'north' || q.dir === 'south')) || pick('north', 'south', 'up');
       drawFace(ctx, q, name, [2, 0, 0, 2, 0, 0], 1, false);
     }
-    url = c.toDataURL();
   }
-  prep.thumbs.set(name, url);
-  return url;
+  prep.thumbs.set(name, c);
+  return c;
+}
+function texCanvas(k) {
+  let c = prep.texCanvas.get(k);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = c.height = prep.S;
+    c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(prep.texPx.get(k)), prep.S, prep.S), 0, 0);
+    prep.texCanvas.set(k, c);
+  }
+  return c;
 }
 function drawFace(ctx, q, name, m, shadeF, crop) {
-  const S = prep.S, { cell } = prep.info.get(q.tex);
-  let sx = (cell % prep.cols) * prep.C + prep.P, sy = Math.floor(cell / prep.cols) * prep.C + prep.P, sw = S, sh = S;
+  const S = prep.S, src = texCanvas(q.tex);
+  let sx = 0, sy = 0, sw = S, sh = S;
   if (crop) {   // nur den Teil der Textur, den diese Fläche zeigt
     const [u1, v1, u2, v2] = q.uv;
-    sx += Math.min(u1, u2) / 16 * S; sy += Math.min(v1, v2) / 16 * S;
+    sx = Math.min(u1, u2) / 16 * S; sy = Math.min(v1, v2) / 16 * S;
     sw = Math.max(Math.abs(u2 - u1), .5) / 16 * S; sh = Math.max(Math.abs(v2 - v1), .5) / 16 * S;
   }
   const t = document.createElement('canvas');
   t.width = t.height = 16;
   const tc = t.getContext('2d');
   tc.imageSmoothingEnabled = false;
-  tc.drawImage(prep.canvas, sx, sy, sw, sh, 0, 0, 16, 16);
+  tc.drawImage(src, sx, sy, sw, sh, 0, 0, 16, 16);
   const tint = q.tint ? tintFor(name) : null;
   if (tint || shadeF < 1) {
     if (tint) { tc.globalCompositeOperation = 'multiply'; tc.fillStyle = tint; tc.fillRect(0, 0, 16, 16); }
     if (shadeF < 1) { tc.globalCompositeOperation = 'source-atop'; tc.fillStyle = `rgba(0,0,0,${1 - shadeF})`; tc.fillRect(0, 0, 16, 16); }
     tc.globalCompositeOperation = 'destination-in';   // ursprüngliche Transparenz wiederherstellen
-    tc.drawImage(prep.canvas, sx, sy, sw, sh, 0, 0, 16, 16);
+    tc.drawImage(src, sx, sy, sw, sh, 0, 0, 16, 16);
   }
   ctx.setTransform(...m);
   ctx.drawImage(t, 0, 0);
@@ -1848,12 +1943,13 @@ function renderBlockList() {
     b.className = 'slot' + (hiddenView.has(n) ? ' hid' : '');
     b.dataset.name = n;
     const isAir = /(^|:)(cave_|void_)?air$/.test(n);
-    b.innerHTML = (isAir ? AIR_ICON : th ? `<img src="${th}" alt="">` : `<span class="solid" style="background:${colorFor(n)}"></span>`)
+    b.innerHTML = (isAir ? AIR_ICON : th ? '<canvas width="32" height="32"></canvas>' : `<span class="solid" style="background:${colorFor(n)}"></span>`)
       + `<span class="cnt">${fmtCount(c)}</span>`
       + (hiddenView.has(n) ? `<span class="mark nov">${MARK_EYE}</span>` : '')
       + (hiddenExport.has(n) ? `<span class="mark noexp">${MARK_X}</span>` : '');
     b.setAttribute('aria-label', `${prettyName(n)}, ${c} Stück` + (hiddenView.has(n) ? ', ausgeblendet' : '') + (hiddenExport.has(n) ? ', nicht im Export' : ''));
     b.setAttribute('aria-pressed', String(set.has(n)));
+    if (th && !isAir) { const cv = b.querySelector('canvas'), cx = cv.getContext('2d'); cx.imageSmoothingEnabled = false; cx.drawImage(th, 0, 0); }
     b.onclick = () => {
       set.has(n) ? set.delete(n) : set.add(n);
       if (invMode === 'view') renderPreview(false);

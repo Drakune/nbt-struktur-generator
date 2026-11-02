@@ -15,7 +15,8 @@ Oder `index.html` herunterladen und per Doppelklick öffnen. Installation oder S
 - **Vorhandene `.nbt` laden** (Drag & Drop oder „Öffnen“): ansehen, filtern, wieder exportieren oder von Claude umbauen und erweitern lassen. Block-Entity-Daten (Kisteninhalte, Create-Daten) und Entities bleiben erhalten, auch bei Mod-Blöcken.
 - **Ebenen**: Achse (Y/X/Z), Richtung (von unten/oben, Westen/Osten, Norden/Süden) und Modus „einzeln“.
 - **Blockliste**: Anzahl je Blocktyp mit Textur-Vorschau. Jeder Typ lässt sich in der Vorschau ausblenden oder vom Export ausschließen.
-- **Aufgeräumte Oberfläche**: Beide Seitenleisten lassen sich ein- und ausklappen. API-Key und Kosten stehen in den Einstellungen.
+- **Aufgeräumte Oberfläche**: Beide Seitenleisten lassen sich ein- und ausklappen. API-Key und Kosten stehen in den Einstellungen. Dunkles Design (Standard) und helles Design zum Umschalten.
+- **Funktioniert auch mit Fingerprinting-Schutz** (Firefox resistFingerprinting, LibreWolf, Brave): Texturen werden selbst dekodiert statt über Canvas ausgelesen.
 - **Code-Ansicht**: Den Bau-Code selbst bearbeiten und lokal neu ausführen, das kostet nichts.
 - **Alle Java-Versionen von 1.16 bis 26.3** (die DataVersion wird passend gesetzt).
 
