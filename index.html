@@ -633,9 +633,17 @@ When the user asks for changes, output the complete updated code again, not a di
 </script>
 
 <script type="module">
-import Anthropic from '@anthropic-ai/sdk';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+// Bibliotheken erst bei Bedarf laden: Wenn ein CDN blockiert ist, funktionieren
+// Laden, Blockliste und Export trotzdem (keine statischen Imports).
+let Anthropic = null, THREE = null, OrbitControls = null;
+async function loadSDK() {
+  if (!Anthropic) {
+    try { Anthropic = (await import('@anthropic-ai/sdk')).default; }
+    catch (e) { throw new Error('Das Claude-SDK konnte nicht geladen werden (esm.sh nicht erreichbar oder durch einen Blocker gesperrt): ' + e.message); }
+  }
+  return Anthropic;
+}
+const isApiErr = (e, cls) => !!(Anthropic && Anthropic[cls] && e instanceof Anthropic[cls]);
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -710,7 +718,6 @@ async function ask(text, first) {
   if (!key) { setStatus('<span class="err">Bitte zuerst deinen API-Key eintragen.</span>'); return; }
   const modelId = $('model').value, m = MODELS[modelId];
   const pending = [...history, { role: 'user', content: userMessage(text, first) }];
-  const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
   const params = {
     model: modelId,
     max_tokens: 64000,
@@ -727,6 +734,8 @@ async function ask(text, first) {
   setStatus('Verbinde mit Claude …');
   let outChars = 0, thinkChars = 0;
   try {
+    const SDK = await loadSDK();
+    const client = new SDK({ apiKey: key, dangerouslyAllowBrowser: true });
     const stream = client.beta.messages.stream(params);
     currentStream = stream;
     for await (const ev of stream) {
@@ -764,11 +773,11 @@ async function ask(text, first) {
     setStatus('Führe Bau-Code aus …');
     await runCode(code);
   } catch (e) {
-    if (e instanceof Anthropic.APIUserAbortError) setStatus('Abgebrochen.');
-    else if (e instanceof Anthropic.AuthenticationError) setStatus('<span class="err">API-Key ungültig (401). Bitte prüfen.</span>');
-    else if (e instanceof Anthropic.PermissionDeniedError) setStatus('<span class="err">Kein Zugriff auf dieses Modell (403).</span>');
-    else if (e instanceof Anthropic.RateLimitError) setStatus('<span class="err">Rate-Limit erreicht (429). Kurz warten und erneut versuchen.</span>');
-    else if (e instanceof Anthropic.APIError) setStatus(`<span class="err">API-Fehler ${e.status ?? ''}: ${escapeHtml(e.message)}</span>`);
+    if (isApiErr(e, 'APIUserAbortError')) setStatus('Abgebrochen.');
+    else if (isApiErr(e, 'AuthenticationError')) setStatus('<span class="err">API-Key ungültig (401). Bitte prüfen.</span>');
+    else if (isApiErr(e, 'PermissionDeniedError')) setStatus('<span class="err">Kein Zugriff auf dieses Modell (403).</span>');
+    else if (isApiErr(e, 'RateLimitError')) setStatus('<span class="err">Rate-Limit erreicht (429). Kurz warten und erneut versuchen.</span>');
+    else if (isApiErr(e, 'APIError')) setStatus(`<span class="err">API-Fehler ${e.status ?? ''}: ${escapeHtml(e.message)}</span>`);
     else setStatus(`<span class="err">${escapeHtml(String(e.message || e))}</span>`);
   } finally {
     currentStream = null;
@@ -947,7 +956,7 @@ function renderBlockList() {
     const row = document.createElement('div');
     row.className = 'blRow' + (hiddenView.has(n) || hiddenExport.has(n) ? ' off' : '');
     const short = n.startsWith('minecraft:') ? n.slice(10) : n;
-    row.innerHTML = `<div class="blName" title="${escapeHtml(n)}"><span class="sw" style="background:#${colorFor(n).getHexString()}"></span><span class="n">${escapeHtml(short)}</span><span class="c">${c.toLocaleString('de')}</span></div>`;
+    row.innerHTML = `<div class="blName" title="${escapeHtml(n)}"><span class="sw" style="background:${colorFor(n)}"></span><span class="n">${escapeHtml(short)}</span><span class="c">${c.toLocaleString('de')}</span></div>`;
     const view = Object.assign(document.createElement('input'), { type: 'checkbox', checked: !hiddenView.has(n), title: 'In der Vorschau anzeigen' });
     const exp = Object.assign(document.createElement('input'), { type: 'checkbox', checked: !hiddenExport.has(n), title: 'In die .nbt übernehmen' });
     view.onchange = () => { view.checked ? hiddenView.delete(n) : hiddenView.add(n); row.classList.toggle('off', hiddenView.has(n) || hiddenExport.has(n)); renderPreview(false); updateListFoot(counts); };
@@ -990,28 +999,44 @@ $('download').onclick = async () => {
 $('tab3d').onclick = () => { $('tab3d').classList.add('active'); $('tabCode').classList.remove('active'); $('codeWrap').style.display = 'none'; $('canvasWrap').style.display = ''; };
 $('tabCode').onclick = () => { $('tabCode').classList.add('active'); $('tab3d').classList.remove('active'); $('codeWrap').style.display = 'flex'; $('canvasWrap').style.display = 'none'; };
 
-// ---------- 3D-Vorschau ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-$('canvasWrap').appendChild(renderer.domElement);
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9cc4e4);
-const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-scene.add(new THREE.HemisphereLight(0xffffff, 0x556070, 1.6));
-const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-sun.position.set(0.6, 1, 0.35);
-scene.add(sun);
-let meshes = [], grid = null;
+// ---------- 3D-Vorschau (three.js wird nachgeladen) ----------
+let renderer, scene, camera, controls, meshes = [], grid = null;
+async function initPreview() {
+  try {
+    THREE = await import('three');
+    ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+  } catch (e) {
+    $('empty').innerHTML = '3D-Vorschau nicht verfügbar: three.js konnte nicht von cdn.jsdelivr.net geladen werden (Blocker? offline?).<br>Laden, Blockliste und .nbt-Export funktionieren trotzdem.';
+    return;
+  }
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (e) {
+    $('empty').innerHTML = '3D-Vorschau nicht verfügbar: WebGL ist in diesem Browser deaktiviert.<br>Laden, Blockliste und .nbt-Export funktionieren trotzdem.';
+    return;
+  }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  $('canvasWrap').appendChild(renderer.domElement);
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x9cc4e4);
+  camera = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x556070, 1.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(0.6, 1, 0.35);
+  scene.add(sun);
+  new ResizeObserver(resize).observe($('view'));
+  resize();
+  (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+  if (structure) renderPreview(true);
+}
 function resize() {
   const r = $('view').getBoundingClientRect();
   renderer.setSize(r.width, r.height, false);
   renderer.domElement.style.width = r.width + 'px'; renderer.domElement.style.height = r.height + 'px';
   camera.aspect = r.width / Math.max(r.height, 1); camera.updateProjectionMatrix();
 }
-new ResizeObserver(resize).observe($('view'));
-(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
 
 const DYES = { white: '#e9ecec', orange: '#f07613', magenta: '#bd44b3', light_blue: '#3aafd9', yellow: '#f8c527', lime: '#70b919',
   pink: '#ed8dac', gray: '#3e4447', light_gray: '#8e8e86', cyan: '#158991', purple: '#792aac', blue: '#35399d', brown: '#724728',
@@ -1061,12 +1086,17 @@ function colorFor(name) {
     const base = Object.keys(COLORS).sort((a, b) => b.length - a.length).find(k => n.includes(k));
     hex = base ? COLORS[base] : null;
   }
-  if (!hex) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0; hex = '#' + new THREE.Color().setHSL((h % 360) / 360, .35, .55).getHexString(); }
-  c = new THREE.Color(hex);
-  colorCache.set(name, c);
-  return c;
+  if (!hex) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0; hex = hslHex(h % 360, .35, .55); }
+  colorCache.set(name, hex);
+  return hex;
 }
-function shade(hex, f) { const c = new THREE.Color(hex); c.multiplyScalar(1 + f); return '#' + c.getHexString(); }
+// Farb-Hilfen ohne three.js, damit die Blockliste auch ohne 3D-Vorschau funktioniert
+const toHex = rgb => '#' + rgb.map(v => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('');
+function shade(hex, f) { return toHex([1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) * (1 + f))); }
+function hslHex(h, s, l) {
+  const a = s * Math.min(l, 1 - l), f = k => { const t = (k + h / 30) % 12; return l - a * Math.max(-1, Math.min(t - 3, 9 - t, 1)); };
+  return toHex([f(0), f(8), f(4)].map(v => v * 255));
+}
 const isTransparent = n => /glass|water|ice$|^minecraft:ice/.test(n) && !n.includes('tinted');
 
 function piecesFor(name, props) {
@@ -1110,7 +1140,7 @@ function piecesFor(name, props) {
 }
 
 function renderPreview(fitCamera) {
-  if (!structure) return;
+  if (!structure || !renderer) return;
   for (const m of meshes) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
   meshes = [];
   const s = structure, inLayer = layerVisible();
@@ -1132,7 +1162,7 @@ function renderPreview(fitCamera) {
   }
   const geo = new THREE.BoxGeometry(1, 1, 1);
   const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
-  const cx = s.size[0] / 2, cz = s.size[2] / 2;
+  const cx = s.size[0] / 2, cz = s.size[2] / 2, col = new THREE.Color();
   function makeMesh(list, material) {
     const n = list.length / 5;
     if (!n) return;
@@ -1141,7 +1171,7 @@ function renderPreview(fitCamera) {
       const x = list[5 * j], y = list[5 * j + 1], z = list[5 * j + 2], st = list[5 * j + 3], pc = list[5 * j + 4];
       v.set(x + pc[0] - cx, y + pc[1], z + pc[2] - cz); sc.set(pc[3], pc[4], pc[5]);
       mtx.compose(v, q, sc); mesh.setMatrixAt(j, mtx);
-      mesh.setColorAt(j, colorFor(s.palette[st].name));
+      mesh.setColorAt(j, col.set(colorFor(s.palette[st].name)));
     }
     mesh.instanceMatrix.needsUpdate = true;
     scene.add(mesh); meshes.push(mesh);
@@ -1162,6 +1192,20 @@ function renderPreview(fitCamera) {
 }
 updateEstimate();
 updateSessionCost();
+window.__appReady = true;
+initPreview();
+</script>
+<script>
+// Falls das Hauptskript nicht startet (z. B. sehr alter Browser), wenigstens sichtbar Bescheid geben
+// und verhindern, dass der Browser abgelegte Dateien einfach öffnet/speichert.
+addEventListener('dragover', e => { if (!window.__appReady) e.preventDefault(); });
+addEventListener('drop', e => { if (!window.__appReady) e.preventDefault(); });
+addEventListener('load', () => setTimeout(() => {
+  if (window.__appReady) return;
+  const box = document.getElementById('statusBox');
+  box.style.display = '';
+  document.getElementById('status').innerHTML = '<span class="err">Die Seite konnte nicht gestartet werden. Bitte einen aktuellen Browser (Firefox, Chrome, Edge) verwenden und die Konsole (F12) auf Fehler prüfen.</span>';
+}, 1500));
 </script>
 </body>
 </html>
