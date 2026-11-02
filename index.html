@@ -6,77 +6,181 @@
 <title>NBT Struktur-Generator</title>
 <style>
   :root {
-    --bg: #14161a; --panel: #1d2026; --panel2: #252932; --line: #333845;
-    --text: #e6e8ec; --muted: #9aa1ad; --accent: #6fbf5a; --accent2: #4f9a3d;
-    --warn: #e0a84a; --err: #e06a5a;
+    --bg: #0e1014; --surface: #15181e; --surface2: #1c2028; --surface3: #252a35; --border: #272c38;
+    --text: #e9ebf1; --muted: #8a92a6; --faint: #5d6477;
+    --accent: #62c45c; --accent-hover: #76d270; --accent-ink: #0a1a09; --accent-soft: #62c45c1f;
+    --warn: #e6a94c; --err: #ef6b5b; --radius: 12px; --shadow: 0 10px 40px #0009;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
-    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .app { display: grid; grid-template-columns: 400px 1fr; height: 100vh; }
-  aside { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: 16px; }
-  main { position: relative; display: flex; flex-direction: column; min-width: 0; }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
-  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-  input[type=text], input[type=password], select, textarea {
-    width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 8px; font: inherit; }
-  textarea { resize: vertical; min-height: 90px; }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 6px; }
-  button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
-    padding: 8px 12px; font: inherit; cursor: pointer; }
-  button:hover:not(:disabled) { border-color: var(--muted); }
-  button:disabled { opacity: .5; cursor: default; }
-  button.primary { background: var(--accent2); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; padding: 10px; margin-top: 12px; }
-  .box { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-top: 12px; font-size: 12px; }
-  .box h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-  .cost b { color: var(--text); }
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  a { color: var(--accent); }
+  code { font-family: ui-monospace, "JetBrains Mono", Consolas, monospace; font-size: 12px; background: var(--surface3); padding: 1px 5px; border-radius: 5px; word-break: break-all; }
+  [hidden] { display: none !important; }
+
+  /* Kopfzeile */
+  .topbar { height: 56px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px;
+    background: var(--surface); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; white-space: nowrap; margin: 0 8px 0 4px; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #7ad874, #3d8c39); box-shadow: inset 0 -3px 0 #0003; }
+  .logo svg { width: 16px; height: 16px; stroke: #0b1f0a; stroke-width: 2.4; }
+  .spacer { flex: 1; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px;
+    border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); white-space: nowrap; transition: background .15s, border-color .15s; }
+  .btn:hover:not(:disabled) { background: var(--surface3); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); font-weight: 600; }
+  .btn.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn.ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+  .btn.small { height: 30px; padding: 0 10px; font-size: 13px; border-radius: 8px; }
+  .btn.block { width: 100%; height: 46px; font-size: 15px; }
+  .btn .chip { font-size: 12px; font-weight: 500; opacity: .75; }
+  .icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; border: 0; background: transparent; color: var(--muted); position: relative; }
+  .icon-btn:hover, .icon-btn.on { background: var(--surface2); color: var(--text); }
+  .dot { position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .btn .dot { position: static; }
+  .sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+  /* Layout und Seitenleisten */
+  .layout { flex: 1; display: flex; min-height: 0; position: relative; }
+  .drawer { flex: none; background: var(--surface); overflow: hidden; display: flex; transition: width .22s ease; }
+  .drawer > .inner { display: flex; flex-direction: column; min-height: 0; height: 100%; flex: none; }
+  .drawer.left { width: 380px; border-right: 1px solid var(--border); }
+  .drawer.left > .inner { width: 380px; }
+  .drawer.right { width: 310px; border-left: 1px solid var(--border); }
+  .drawer.right > .inner { width: 310px; }
+  .drawer.collapsed { width: 0; border-color: transparent; }
+  .scroll { overflow-y: auto; flex: 1; min-height: 0; }
+  .pad { padding: 16px; }
+  .tabs { display: flex; gap: 4px; padding: 10px 12px 0; border-bottom: 1px solid var(--border); }
+  .tabs button { border: 0; background: none; padding: 8px 12px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+  .drawer-foot { border-top: 1px solid var(--border); padding: 10px 16px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+
+  /* Formulare */
+  .label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+  textarea, input[type=text], input[type=password], select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; outline: none; transition: border-color .15s; }
+  textarea:focus, input:focus, select:focus { border-color: #3e4659; }
+  textarea { resize: vertical; min-height: 120px; }
+  select { appearance: none; padding-right: 30px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a92a6' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { margin-bottom: 12px; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .check input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+  details.opts { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
+  details.opts summary { list-style: none; cursor: pointer; padding: 10px 12px; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  details.opts summary::-webkit-details-marker { display: none; }
+  details.opts summary .sum { color: var(--muted); margin-left: auto; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  details.opts summary svg { transition: transform .15s; color: var(--muted); width: 16px; height: 16px; }
+  details.opts[open] summary svg { transform: rotate(90deg); }
+  details.opts .body { padding: 2px 12px 12px; display: grid; gap: 10px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  /* Karten */
+  .card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-top: 14px; font-size: 13px; }
+  .card h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .card h4 .grow { flex: 1; }
+  .card.base { border-color: #3a5a37; background: linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--surface2); margin: 0 0 14px; }
   .muted { color: var(--muted); }
-  .warn { color: var(--warn); }
   .err { color: var(--err); white-space: pre-wrap; }
   .ok { color: var(--accent); }
-  #thinking { max-height: 120px; overflow-y: auto; white-space: pre-wrap; color: var(--muted); font-size: 11px; }
+  .warn { color: var(--warn); }
   #desc { white-space: pre-wrap; }
-  .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
-  .toolbar .grow { flex: 1; }
-  .tabs button.active { border-color: var(--accent); }
-  #view { flex: 1; position: relative; min-height: 0; }
-  #canvasWrap, #codeWrap { position: absolute; inset: 0; }
-  #codeWrap { display: none; flex-direction: column; padding: 12px; gap: 8px; }
-  #code { flex: 1; font: 12px/1.4 ui-monospace, Consolas, monospace; min-height: 0; resize: none; }
-  #empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 24px; pointer-events: none; }
-  #layerWrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
-  #layerWrap select { width: auto; padding: 4px 6px; }
-  #layerVal { min-width: 2.5em; }
-  #statsBar { padding: 4px 12px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--panel); min-height: 24px; }
-  #blockList { position: absolute; top: 0; right: 0; bottom: 0; width: 300px; background: var(--panel); border-left: 1px solid var(--line);
-    display: none; flex-direction: column; z-index: 2; }
-  #blockList.open { display: flex; }
-  .blHead { padding: 8px; border-bottom: 1px solid var(--line); }
-  .blBtns { display: flex; gap: 6px; margin-top: 6px; }
-  .blBtns button { flex: 1; padding: 4px; font-size: 12px; }
-  .blCols, .blRow { display: grid; grid-template-columns: 1fr 48px 48px; align-items: center; gap: 4px; font-size: 12px; }
-  .blCols { margin-top: 8px; color: var(--muted); }
-  .blCols span:not(:first-child), .blRow input { justify-self: center; }
-  #blRows { overflow-y: auto; flex: 1; padding: 4px 8px; }
-  .blRow { padding: 3px 0; border-bottom: 1px solid #262a32; }
-  .blName { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  .blName span.n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .blName span.c { color: var(--muted); margin-left: auto; }
-  .sw { width: 12px; height: 12px; border-radius: 2px; flex: none; border: 1px solid #0006; }
-  .blRow.off .n { color: var(--muted); text-decoration: line-through; }
-  #blFoot { padding: 6px 8px; font-size: 11px; border-top: 1px solid var(--line); }
-  #dropOverlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 20px; font-weight: 600;
-    background: #6fbf5a33; border: 3px dashed var(--accent); z-index: 5; pointer-events: none; }
-  body.dragging #dropOverlay { display: flex; }
-  @media (max-width: 860px) { #blockList { width: 100%; } }
-  a { color: var(--accent); }
-  @media (max-width: 860px) {
-    .app { grid-template-columns: 1fr; height: auto; }
-    aside { border-right: 0; border-bottom: 1px solid var(--line); }
-    main { height: 80vh; }
+  details.think summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 6px; }
+  #thinking { max-height: 140px; overflow-y: auto; white-space: pre-wrap; color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--surface3); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .refine { margin-top: 14px; }
+  .refine textarea { min-height: 70px; }
+  .row-btns { display: flex; gap: 8px; margin-top: 8px; }
+  .row-btns .btn { flex: 1; }
+
+  /* Code-Tab */
+  #tab-code { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+  #code { flex: 1; min-height: 200px; font: 12px/1.5 ui-monospace, "JetBrains Mono", Consolas, monospace; resize: none; white-space: pre; }
+
+  /* Ansicht */
+  main#view { flex: 1; position: relative; min-width: 0; background: radial-gradient(ellipse at 50% 30%, #2b3a4f, #12161d 75%); }
+  #canvasWrap { position: absolute; inset: 0; }
+  #canvasWrap canvas { display: block; }
+  .empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; }
+  .empty .box { max-width: 420px; text-align: center; padding: 32px 28px; border: 1.5px dashed #3a4253; border-radius: 18px; background: #15181ecc; backdrop-filter: blur(6px); }
+  .empty .big { width: 52px; height: 52px; margin: 0 auto 14px; border-radius: 14px; display: grid; place-items: center; background: var(--surface3); color: var(--accent); }
+  .empty .big svg { width: 26px; height: 26px; }
+  .empty h2 { margin: 0 0 6px; font-size: 18px; }
+  .empty p { margin: 0 0 18px; color: var(--muted); }
+  .empty .btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .chipbar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; }
+  .chipbar span { pointer-events: auto; background: #15181ee0; backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12px; color: var(--muted); }
+  .floatbar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: max-content; display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; background: #15181ee8; backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); max-width: calc(100% - 24px); flex-wrap: wrap; justify-content: center; }
+  .floatbar .lbl { font-size: 12px; color: var(--muted); }
+  .seg { display: inline-flex; background: var(--surface2); border-radius: 9px; padding: 3px; gap: 2px; }
+  .seg button { border: 0; background: transparent; padding: 4px 10px; border-radius: 7px; color: var(--muted); font-size: 13px; }
+  .seg button.on { background: var(--surface3); color: var(--text); }
+  .toggle { border: 1px solid var(--border); background: var(--surface2); border-radius: 8px; padding: 4px 10px; font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+  .toggle.on { color: var(--text); border-color: #3a5a37; background: var(--accent-soft); }
+  .toggle svg { width: 15px; height: 15px; }
+  input[type=range] { accent-color: var(--accent); width: 180px; }
+  #layerVal { font-size: 12px; min-width: 64px; font-variant-numeric: tabular-nums; }
+  #dropOverlay { position: fixed; inset: 0; display: none; place-items: center; z-index: 50; background: #0e1014cc; backdrop-filter: blur(3px); pointer-events: none; }
+  #dropOverlay div { border: 2px dashed var(--accent); border-radius: 20px; padding: 40px 56px; font-size: 18px; font-weight: 600; text-align: center; background: var(--accent-soft); }
+  #dropOverlay small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 6px; }
+  body.dragging #dropOverlay { display: grid; }
+
+  /* Blockliste */
+  .bl-head { padding: 12px; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+  .bl-head .title { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .bl-head .title .muted { font-weight: 400; font-size: 12px; margin-left: auto; }
+  .bl-cols, .bl-row { display: grid; grid-template-columns: 1fr 38px 38px; align-items: center; gap: 2px; }
+  .bl-cols { font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; padding: 8px 12px 0; }
+  .bl-cols span:not(:first-child) { text-align: center; }
+  #blRows { padding: 4px 6px 10px; }
+  .bl-row { padding: 4px 6px; border-radius: 8px; font-size: 13px; }
+  .bl-row:hover { background: var(--surface2); }
+  .bl-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .bl-name .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bl-name .c { color: var(--faint); margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; padding-left: 6px; }
+  .sw { width: 20px; height: 20px; border-radius: 5px; flex: none; image-rendering: pixelated; background-size: cover; box-shadow: inset 0 0 0 1px #0005; }
+  .bl-row.off .n { color: var(--faint); text-decoration: line-through; }
+  .eye { width: 30px; height: 28px; border: 0; background: none; border-radius: 7px; color: var(--muted); display: grid; place-items: center; justify-self: center; }
+  .eye:hover { background: var(--surface3); color: var(--text); }
+  .eye.offstate { color: var(--faint); opacity: .55; }
+  .eye svg { width: 16px; height: 16px; }
+
+  /* Dialoge, Toasts */
+  dialog { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 16px; padding: 0; width: min(540px, 94vw); box-shadow: var(--shadow); }
+  dialog::backdrop { background: #05070acc; backdrop-filter: blur(2px); }
+  .dlg-head { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 15px; }
+  .dlg-head .spacer { flex: 1; }
+  .dlg-body { padding: 18px; display: grid; gap: 14px; font-size: 13px; }
+  .dlg-body p { margin: 0; color: var(--muted); }
+  .dropzone { border: 1.5px dashed #3a4253; border-radius: 12px; padding: 18px; text-align: center; color: var(--muted); }
+  .sources { display: grid; gap: 6px; }
+  .sources div { display: flex; align-items: center; gap: 8px; background: var(--surface2); border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+  #toasts { position: fixed; top: 68px; right: 18px; display: grid; gap: 8px; z-index: 60; }
+  .toast { background: var(--surface3); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: var(--shadow); max-width: 360px; animation: tin .2s ease; transition: opacity .4s; }
+  .toast.err { border-left-color: var(--err); }
+  .toast.out { opacity: 0; }
+  @keyframes tin { from { transform: translateY(8px); opacity: 0; } }
+
+  @media (max-width: 900px) {
+    .brand .name, .btn .txt, #fileName, .sep { display: none; }
+    .topbar { gap: 2px; padding: 0 6px; }
+    .drawer { position: absolute; top: 0; bottom: 0; z-index: 20; box-shadow: var(--shadow); }
+    .drawer.left { left: 0; } .drawer.right { right: 0; }
+    .drawer.left, .drawer.left > .inner, .drawer.right, .drawer.right > .inner { width: min(92vw, 380px); }
+    .drawer.collapsed { width: 0; }
+    input[type=range] { width: 120px; }
   }
 </style>
 <script type="importmap">
@@ -88,134 +192,158 @@
 </script>
 </head>
 <body>
-<div class="app">
-  <aside>
-    <h1>NBT Struktur-Generator</h1>
-    <div class="sub">Beschreibe ein Bauwerk – Claude entwirft es einzigartig, du lädst es als <code>.nbt</code> herunter (Create-Schematic / Strukturblock).</div>
+<header class="topbar">
+  <button class="icon-btn" id="toggleLeft" title="Seitenleiste „Erstellen“ ein-/ausklappen"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
+  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m12 12 8-4.5M12 12v9M12 12 4 7.5"/></svg></div><span class="name">NBT Struktur-Generator</span></div>
+  <div class="spacer"></div>
+  <button class="btn ghost" id="openFile" title="Vorhandene .nbt-Datei öffnen (oder einfach hineinziehen)"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L7 8m5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="txt">Öffnen</span></button>
+  <button class="btn ghost" id="openTextures" title="Minecraft-Texturen einrichten"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="txt">Texturen</span><span class="dot" id="texDot" hidden></span></button>
+  <button class="icon-btn" id="openSettings" title="Einstellungen: API-Key & Kosten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="dot" id="keyDot" hidden style="background:var(--warn)"></span></button>
+  <div class="sep"></div>
+  <input id="fileName" type="text" value="struktur" title="Dateiname für den Download" style="width:150px;height:36px;padding:6px 10px">
+  <button class="btn primary" id="download" disabled><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-5-5m5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="txt">.nbt</span></button>
+  <button class="icon-btn" id="toggleRight" title="Blockliste ein-/ausklappen"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+</header>
 
-    <label for="apiKey">Claude API-Key</label>
-    <input id="apiKey" type="password" placeholder="sk-ant-..." autocomplete="off">
-    <div class="check"><input id="rememberKey" type="checkbox"><label for="rememberKey" style="margin:0">Key in diesem Browser speichern</label></div>
-    <div class="muted" style="font-size:11px;margin-top:4px">Der Key geht nur direkt an api.anthropic.com. Key erstellen: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a></div>
-
-    <label for="model">Modell <span class="muted">(Preis je 1 Mio. Tokens: Eingabe / Ausgabe)</span></label>
-    <select id="model"></select>
-    <div class="row">
-      <div>
-        <label for="effort">Aufwand</label>
-        <select id="effort">
-          <option value="low">niedrig</option>
-          <option value="medium" selected>mittel</option>
-          <option value="high">hoch</option>
-          <option value="xhigh">sehr hoch</option>
-          <option value="max">maximal</option>
-        </select>
+<div class="layout">
+  <aside class="drawer left" id="left"><div class="inner">
+    <div class="tabs"><button class="on" data-tab="create">Erstellen</button><button data-tab="code">Code</button></div>
+    <div class="scroll" id="tab-create"><div class="pad">
+      <div class="card base" id="baseBox" hidden>
+        <h4><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg><span class="grow">Geladene Datei</span><button class="btn ghost small" id="removeBase" title="Datei entfernen">Entfernen</button></h4>
+        <div id="baseInfo"></div>
+        <label class="check" style="margin-top:8px"><input id="useBase" type="checkbox" checked>Claude soll diese Struktur umbauen / erweitern</label>
       </div>
-      <div>
-        <label for="version">Minecraft-Version</label>
-        <select id="version"></select>
-      </div>
-    </div>
-    <div>
-        <label for="size">Größe</label>
-        <select id="size">
-          <option value="small">klein (bis ~16)</option>
-          <option value="medium" selected>mittel (bis ~32)</option>
-          <option value="large">groß (bis ~64)</option>
-          <option value="huge">sehr groß (bis ~128)</option>
-          <option value="free">frei / laut Beschreibung</option>
-        </select>
-    </div>
 
-    <div class="box" id="baseBox" style="display:none">
-      <h3>Geladene Datei</h3>
-      <div id="baseInfo"></div>
-      <div class="check"><input id="useBase" type="checkbox" checked><label for="useBase" style="margin:0">Als Ausgangspunkt verwenden (Claude baut sie um / erweitert sie)</label></div>
-      <button id="removeBase" style="margin-top:8px">Datei entfernen</button>
-    </div>
+      <label class="label" for="prompt">Was soll gebaut werden?</label>
+      <div class="field"><textarea id="prompt" placeholder="z. B. Eine verwinkelte Fischerhütte auf Stelzen aus Fichtenholz, mit Steg, Laternen und einem kleinen Räucherschuppen"></textarea></div>
 
-    <label for="prompt">Was soll gebaut werden?</label>
-    <textarea id="prompt" placeholder="z. B. Eine verwinkelte Fischerhütte auf Stelzen aus Fichtenholz, mit Steg, Bootsanleger, Laternen und einem kleinen Räucherschuppen"></textarea>
-
-    <div class="box cost" id="estimate"></div>
-    <button class="primary" id="generate">Struktur generieren</button>
-
-    <div class="box" id="statusBox" style="display:none">
-      <h3>Status</h3>
-      <div id="status"></div>
-      <div id="thinking"></div>
-      <button id="abort" style="margin-top:8px;display:none">Abbrechen</button>
-    </div>
-
-    <div class="box" id="resultBox" style="display:none">
-      <h3>Entwurf</h3>
-      <div id="desc"></div>
-      <div id="lastCost" class="cost" style="margin-top:8px"></div>
-    </div>
-
-    <div id="refineBox" style="display:none">
-      <label for="refine">Änderungswunsch</label>
-      <textarea id="refine" placeholder="z. B. Dach steiler, mehr Fenster, Innenraum mit Bibliothek"></textarea>
-      <div class="row" style="margin-top:8px">
-        <button id="refineBtn">Änderung anwenden</button>
-        <button id="newBtn">Neue Struktur</button>
-      </div>
-      <button id="fixBtn" style="display:none;width:100%;margin-top:8px">Fehler von Claude beheben lassen</button>
-    </div>
-
-    <div class="box cost" id="sessionCost"></div>
-    <div class="muted" style="font-size:11px;margin-top:10px">Kosten werden aus den Token-Zahlen der API berechnet (Listenpreise, ohne Gewähr). Abgerechnet wird über dein Anthropic-Konto.</div>
-  </aside>
-
-  <main>
-    <div class="toolbar">
-      <div class="tabs">
-        <button id="tab3d" class="active">3D-Vorschau</button>
-        <button id="tabCode">Code</button>
-      </div>
-      <div id="layerWrap">
-        Ebenen
-        <select id="layerAxis" title="Achse der Ebenen">
-          <option value="1">Y (Höhe)</option>
-          <option value="0">X (West–Ost)</option>
-          <option value="2">Z (Nord–Süd)</option>
-        </select>
-        <select id="layerDir" title="Richtung"></select>
-        <label class="check" style="margin:0"><input id="layerSingle" type="checkbox">nur eine</label>
-        <input id="layer" type="range" min="0" max="0" value="0" disabled>
-        <span id="layerVal">–</span>
-      </div>
-      <div class="grow"></div>
-      <button id="openFile" title="Oder einfach eine .nbt-Datei auf die Seite ziehen">.nbt öffnen</button>
-      <input id="fileInput" type="file" accept=".nbt" hidden>
-      <button id="toggleList">Blockliste</button>
-      <input id="fileName" type="text" style="width:160px" value="struktur">
-      <button id="download" disabled>.nbt herunterladen</button>
-    </div>
-    <div id="statsBar"><span id="stats"></span></div>
-    <div id="view">
-      <div id="canvasWrap"></div>
-      <div id="empty">Noch keine Struktur.<br>Links beschreiben und generieren – oder eine vorhandene <code>.nbt</code> hierher ziehen.</div>
-      <div id="blockList">
-        <div class="blHead">
-          <input id="blSearch" type="text" placeholder="Block suchen …">
-          <div class="blBtns">
-            <button id="blShowAll">alle zeigen</button><button id="blHideAll">alle ausblenden</button>
+      <details class="opts" id="opts">
+        <summary><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>Optionen<span class="sum" id="optsSum"></span></summary>
+        <div class="body">
+          <div><label class="label" for="model">Modell · Preis je 1 Mio. Tokens (Eingabe / Ausgabe)</label><select id="model"></select></div>
+          <div class="grid2">
+            <div><label class="label" for="effort">Gründlichkeit</label>
+              <select id="effort">
+                <option value="low">niedrig</option><option value="medium" selected>mittel</option><option value="high">hoch</option>
+                <option value="xhigh">sehr hoch</option><option value="max">maximal</option>
+              </select></div>
+            <div><label class="label" for="version">Minecraft-Version</label><select id="version"></select></div>
           </div>
-          <div class="blCols"><span>Block</span><span title="In der Vorschau anzeigen">Ansicht</span><span title="In die .nbt-Datei übernehmen">Export</span></div>
+          <div><label class="label" for="size">Größe</label>
+            <select id="size">
+              <option value="small">klein (bis ~16 Blöcke)</option><option value="medium" selected>mittel (bis ~32 Blöcke)</option>
+              <option value="large">groß (bis ~64 Blöcke)</option><option value="huge">sehr groß (bis ~128 Blöcke)</option>
+              <option value="free">frei / laut Beschreibung</option>
+            </select></div>
         </div>
-        <div id="blRows"></div>
-        <div id="blFoot" class="muted"></div>
+      </details>
+
+      <button class="btn primary block" id="generate"><svg viewBox="0 0 24 24"><path d="m12 3 1.9 5.8L20 10.7l-5 3.9 1.8 6.1L12 17.3l-4.8 3.4L9 14.6l-5-3.9 6.1-1.9z"/></svg>Generieren <span class="chip" id="estChip"></span></button>
+      <div class="hint" id="estimate"></div>
+
+      <div class="card" id="statusCard" hidden>
+        <h4><span class="grow">Status</span><button class="btn ghost small" id="abort" hidden>Abbrechen</button></h4>
+        <div id="status"></div>
+        <details class="think" id="thinkBox" hidden><summary>Claudes Überlegungen</summary><div id="thinking"></div></details>
       </div>
-      <div id="dropOverlay">.nbt-Datei hier ablegen</div>
-      <div id="codeWrap">
-        <div class="muted" style="font-size:12px">Der Bau-Code, den Claude geschrieben hat. Du kannst ihn bearbeiten und lokal neu ausführen – das kostet nichts.</div>
-        <textarea id="code" spellcheck="false"></textarea>
-        <div><button id="runCode">Code ausführen</button> <span id="runMsg" class="muted"></span></div>
+
+      <div class="card" id="resultBox" hidden>
+        <h4><span class="grow">Entwurf</span><span id="lastCost" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h4>
+        <div id="desc"></div>
       </div>
+
+      <div class="refine" id="refineBox" hidden>
+        <label class="label" for="refine">Änderungswunsch</label>
+        <textarea id="refine" placeholder="z. B. Dach steiler, mehr Fenster, Innenraum mit Bibliothek"></textarea>
+        <div class="row-btns">
+          <button class="btn" id="refineBtn">Änderung anwenden</button>
+          <button class="btn ghost" id="newBtn">Neu beginnen</button>
+        </div>
+        <button class="btn" id="fixBtn" hidden style="width:100%;margin-top:8px">Fehler von Claude beheben lassen</button>
+      </div>
+    </div></div>
+
+    <div class="scroll" id="tab-code" hidden><div class="pad" style="height:100%;display:flex;flex-direction:column;gap:10px">
+      <p class="muted" style="margin:0;font-size:13px">Der Bau-Code, den Claude geschrieben hat. Du kannst ihn bearbeiten und lokal neu ausführen – das kostet nichts.</p>
+      <textarea id="code" spellcheck="false" placeholder="// set(0, 0, 0, 'stone_bricks')"></textarea>
+      <div style="display:flex;gap:10px;align-items:center"><button class="btn primary" id="runCode">Code ausführen</button><span id="runMsg" class="muted" style="font-size:12px"></span></div>
+    </div></div>
+
+    <div class="drawer-foot"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><path d="M14.5 9a2.5 2.5 0 0 0-2.5-1.5c-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2a2.5 2.5 0 0 1-2.5-1.5M12 6v1.5m0 9V18"/></svg><span id="sessionCostFoot"></span></div>
+  </div></aside>
+
+  <main id="view">
+    <div id="canvasWrap"></div>
+    <div class="empty" id="empty">
+      <div class="box">
+        <div class="big"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m12 12 8-4.5M12 12v9M12 12 4 7.5"/></svg></div>
+        <h2>Noch keine Struktur</h2>
+        <p id="emptyText">Beschreibe links ein Bauwerk und klicke auf <b>Generieren</b> – oder ziehe eine vorhandene <code>.nbt</code>-Datei hierher.</p>
+        <div class="btns"><button class="btn" id="emptyOpen">.nbt öffnen</button><button class="btn ghost" id="emptyTex">Texturen einrichten</button></div>
+      </div>
+    </div>
+    <div class="chipbar" id="chipbar" hidden><span id="stats"></span><span id="texState"></span></div>
+    <div class="floatbar" id="floatbar" hidden>
+      <span class="lbl">Ebenen</span>
+      <div class="seg" id="axisSeg"><button data-axis="1" class="on" title="Höhe">Y</button><button data-axis="0" title="West–Ost">X</button><button data-axis="2" title="Nord–Süd">Z</button></div>
+      <button class="toggle" id="dirBtn" title="Richtung umkehren"><svg viewBox="0 0 24 24"><path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3"/></svg><span id="dirLabel">von unten</span></button>
+      <button class="toggle" id="singleBtn" title="Nur eine einzelne Ebene zeigen">einzeln</button>
+      <input id="layer" type="range" min="0" max="0" value="0">
+      <span id="layerVal">–</span>
+      <button class="toggle" id="resetView" title="Ebenen & Kamera zurücksetzen"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
     </div>
   </main>
+
+  <aside class="drawer right collapsed" id="right"><div class="inner">
+    <div class="bl-head">
+      <div class="title">Blöcke<span class="muted" id="blFoot"></span></div>
+      <input id="blSearch" type="text" placeholder="Suchen …">
+      <div style="display:flex;gap:6px"><button class="btn small" id="blShowAll" style="flex:1">Alle zeigen</button><button class="btn small" id="blHideAll" style="flex:1">Alle ausblenden</button></div>
+    </div>
+    <div class="bl-cols"><span>Block · Anzahl</span><span title="In der Vorschau anzeigen">Sicht</span><span title="In die .nbt-Datei übernehmen">Export</span></div>
+    <div class="scroll" id="blRows"></div>
+  </div></aside>
 </div>
+
+<dialog id="settingsDlg">
+  <div class="dlg-head">Einstellungen<div class="spacer"></div><button class="icon-btn" data-close title="Schließen"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="dlg-body">
+    <div>
+      <label class="label" for="apiKey">Claude API-Key</label>
+      <input id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off">
+      <label class="check" style="margin-top:8px"><input id="rememberKey" type="checkbox">Key in diesem Browser speichern</label>
+    </div>
+    <p>Der Key wird nur direkt an <code>api.anthropic.com</code> gesendet. Abgerechnet wird über dein Anthropic-Konto. Key erstellen: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> – am besten mit Ausgabenlimit.</p>
+    <div class="card" style="margin:0"><h4><span class="grow">Bisher ausgegeben (dieser Browser)</span><button class="btn ghost small" id="resetCost">Zurücksetzen</button></h4><div id="sessionCost" style="font-size:18px;font-weight:600"></div>
+      <div class="muted" style="font-size:12px;margin-top:4px">Berechnet aus den Token-Zahlen der API zu Listenpreisen (ohne Gewähr).</div></div>
+  </div>
+</dialog>
+
+<dialog id="texDlg">
+  <div class="dlg-head">Minecraft-Texturen<div class="spacer"></div><button class="icon-btn" data-close title="Schließen"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="dlg-body">
+    <p>Die Vorschau kann Blöcke mit ihren echten Modellen und Texturen zeigen. Die Texturen gehören Mojang und werden deshalb nicht mitgeliefert – die Seite liest sie <b>einmalig aus deiner eigenen Minecraft-JAR</b> und speichert sie nur lokal in deinem Browser.</p>
+    <div class="dropzone" id="texDrop">
+      <div style="margin-bottom:10px">Minecraft-JAR hier ablegen oder</div>
+      <button class="btn primary" id="texPick">Datei auswählen …</button>
+      <input id="texInput" type="file" accept=".jar,.zip" multiple hidden>
+      <div class="hint" id="texProgress"></div>
+    </div>
+    <div>
+      <div class="label">Wo liegt die JAR?</div>
+      <p><b>Prism Launcher (Flatpak):</b> <code>~/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/libraries/com/mojang/minecraft/&lt;Version&gt;/minecraft-&lt;Version&gt;-client.jar</code></p>
+      <p style="margin-top:6px"><b>Offizieller Launcher:</b> <code>.minecraft/versions/&lt;Version&gt;/&lt;Version&gt;.jar</code></p>
+      <p style="margin-top:6px">Zusätzlich gehen <b>Mod-JARs</b> (z. B. Create) für deren Blöcke und <b>Ressourcenpakete</b> (.zip). Später geladene Dateien überschreiben frühere.</p>
+    </div>
+    <div class="sources" id="texSources"></div>
+    <div style="display:flex;justify-content:flex-end"><button class="btn ghost small" id="texClear">Alle Texturen entfernen</button></div>
+  </div>
+</dialog>
+
+<input id="fileInput" type="file" accept=".nbt" hidden>
+<div id="dropOverlay"><div>Datei hier ablegen<small>.nbt-Struktur · Minecraft-/Mod-JAR · Ressourcenpaket</small></div></div>
+<div id="toasts"></div>
 
 <script>
 // <core> — ohne DOM, wird auch in Tests geladen
@@ -227,11 +355,48 @@ const MODELS = {
 };
 // Grobe Spanne der Ausgabe-Tokens (inkl. Denken) je Aufwandsstufe
 const EFFORT_OUT = { low: [3000, 10000], medium: [6000, 20000], high: [10000, 35000], xhigh: [15000, 50000], max: [20000, 64000] };
+// Java-Releases mit DataVersion (Quelle: minecraft.wiki/w/Data_version), neueste zuerst
 const VERSIONS = {
+  '26.3': { dv: 5023, label: 'Java 26.3' },
+  '26.2': { dv: 4903, label: 'Java 26.2' },
+  '26.1.2': { dv: 4790, label: 'Java 26.1.2' },
+  '26.1.1': { dv: 4788, label: 'Java 26.1.1' },
+  '26.1': { dv: 4786, label: 'Java 26.1' },
+  '1.21.11': { dv: 4671, label: 'Java 1.21.11' },
+  '1.21.10': { dv: 4556, label: 'Java 1.21.10' },
+  '1.21.9': { dv: 4554, label: 'Java 1.21.9' },
+  '1.21.8': { dv: 4440, label: 'Java 1.21.8' },
+  '1.21.7': { dv: 4438, label: 'Java 1.21.7' },
+  '1.21.6': { dv: 4435, label: 'Java 1.21.6' },
+  '1.21.5': { dv: 4325, label: 'Java 1.21.5' },
   '1.21.4': { dv: 4189, label: 'Java 1.21.4' },
+  '1.21.3': { dv: 4082, label: 'Java 1.21.3' },
+  '1.21.2': { dv: 4080, label: 'Java 1.21.2' },
   '1.21.1': { dv: 3955, label: 'Java 1.21.1' },
+  '1.21': { dv: 3953, label: 'Java 1.21' },
+  '1.20.6': { dv: 3839, label: 'Java 1.20.6' },
+  '1.20.5': { dv: 3837, label: 'Java 1.20.5' },
   '1.20.4': { dv: 3700, label: 'Java 1.20.4' },
+  '1.20.3': { dv: 3698, label: 'Java 1.20.3' },
+  '1.20.2': { dv: 3578, label: 'Java 1.20.2' },
   '1.20.1': { dv: 3465, label: 'Java 1.20.1' },
+  '1.20': { dv: 3463, label: 'Java 1.20' },
+  '1.19.4': { dv: 3337, label: 'Java 1.19.4' },
+  '1.19.3': { dv: 3218, label: 'Java 1.19.3' },
+  '1.19.2': { dv: 3120, label: 'Java 1.19.2' },
+  '1.19.1': { dv: 3118, label: 'Java 1.19.1' },
+  '1.19': { dv: 3106, label: 'Java 1.19' },
+  '1.18.2': { dv: 2975, label: 'Java 1.18.2' },
+  '1.18.1': { dv: 2865, label: 'Java 1.18.1' },
+  '1.18': { dv: 2861, label: 'Java 1.18' },
+  '1.17.1': { dv: 2730, label: 'Java 1.17.1' },
+  '1.17': { dv: 2725, label: 'Java 1.17' },
+  '1.16.5': { dv: 2586, label: 'Java 1.16.5' },
+  '1.16.4': { dv: 2584, label: 'Java 1.16.4' },
+  '1.16.3': { dv: 2580, label: 'Java 1.16.3' },
+  '1.16.2': { dv: 2578, label: 'Java 1.16.2' },
+  '1.16.1': { dv: 2567, label: 'Java 1.16.1' },
+  '1.16': { dv: 2566, label: 'Java 1.16' },
 };
 const SIZE_HINT = {
   small: 'Keep the build within about 16x16 footprint (height as appropriate).',
@@ -633,6 +798,12 @@ When the user asks for changes, output the complete updated code again, not a di
 </script>
 
 <script type="module">
+const $ = id => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
 // Bibliotheken erst bei Bedarf laden: Wenn ein CDN blockiert ist, funktionieren
 // Laden, Blockliste und Export trotzdem (keine statischen Imports).
 let Anthropic = null, THREE = null, OrbitControls = null;
@@ -645,36 +816,69 @@ async function loadSDK() {
 }
 const isApiErr = (e, cls) => !!(Anthropic && Anthropic[cls] && e instanceof Anthropic[cls]);
 
-const $ = id => document.getElementById(id);
-const store = {
-  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
-  del(k) { try { localStorage.removeItem(k); } catch {} },
-};
+// ---------- Allgemeines ----------
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function toast(msg, kind = '') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind; t.textContent = msg;
+  $('toasts').append(t);
+  setTimeout(() => t.classList.add('out'), kind === 'err' ? 6000 : 3500);
+  setTimeout(() => t.remove(), kind === 'err' ? 6500 : 4000);
+}
+function setStatus(html) { $('statusCard').hidden = false; $('status').innerHTML = html; }
+const usd = v => v < 0.01 ? '$' + v.toFixed(4) : '$' + v.toFixed(v < 1 ? 3 : 2);
+function suggestName(t) {
+  return (t.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').split('_').slice(0, 4).join('_')) || 'struktur';
+}
+
+// ---------- Seitenleisten, Tabs, Dialoge ----------
+const narrow = () => matchMedia('(max-width: 900px)').matches;
+function setDrawer(side, open) {
+  if (open && narrow()) { const other = side === 'left' ? 'right' : 'left'; $(other).classList.add('collapsed'); $(other === 'left' ? 'toggleLeft' : 'toggleRight').classList.remove('on'); }
+  $(side).classList.toggle('collapsed', !open);
+  $(side === 'left' ? 'toggleLeft' : 'toggleRight').classList.toggle('on', open);
+  if (!narrow()) store.set('nbtgen.drawer.' + side, open ? '1' : '0');
+}
+setDrawer('left', narrow() ? false : store.get('nbtgen.drawer.left') !== '0');
+setDrawer('right', narrow() ? false : store.get('nbtgen.drawer.right') === '1');
+$('toggleLeft').onclick = () => setDrawer('left', $('left').classList.contains('collapsed'));
+$('toggleRight').onclick = () => setDrawer('right', $('right').classList.contains('collapsed'));
+function showTab(t) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $('tab-create').hidden = t !== 'create'; $('tab-code').hidden = t !== 'code';
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+document.querySelectorAll('dialog [data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+$('openSettings').onclick = () => $('settingsDlg').showModal();
+$('openTextures').onclick = $('emptyTex').onclick = () => $('texDlg').showModal();
 
 // ---------- Einstellungen ----------
-for (const [id, m] of Object.entries(MODELS)) $('model').add(new Option(`${m.label} – $${m.in} / $${m.out}`, id));
-// Preise: Anthropic-Listenpreise (Stand November 2026), bei Änderungen in MODELS oben anpassen
-for (const [id, v] of Object.entries(VERSIONS)) $('version').add(new Option(v.label, id));
+for (const [id, m] of Object.entries(MODELS)) $('model').add(new Option(`${m.label} · $${m.in} / $${m.out}`, id));
+for (const [id, v] of Object.entries(VERSIONS)) $('version').add(new Option(v.label.replace('Java ', ''), id));
 $('version').value = '1.21.1';
 const savedKey = store.get('nbtgen.key');
 if (savedKey) { $('apiKey').value = savedKey; $('rememberKey').checked = true; }
+const updateKeyDot = () => { $('keyDot').hidden = !!$('apiKey').value.trim(); };
 for (const k of ['model', 'effort', 'version', 'size']) {
   const v = store.get('nbtgen.' + k);
   if (v && [...$(k).options].some(o => o.value === v)) $(k).value = v;
   $(k).addEventListener('change', () => { store.set('nbtgen.' + k, $(k).value); updateEstimate(); });
 }
 $('rememberKey').addEventListener('change', () => { if ($('rememberKey').checked) store.set('nbtgen.key', $('apiKey').value.trim()); else store.del('nbtgen.key'); });
-$('apiKey').addEventListener('input', () => { if ($('rememberKey').checked) store.set('nbtgen.key', $('apiKey').value.trim()); });
+$('apiKey').addEventListener('input', () => { if ($('rememberKey').checked) store.set('nbtgen.key', $('apiKey').value.trim()); updateKeyDot(); });
+if (store.get('nbtgen.optsOpen') === '1') $('opts').open = true;
+$('opts').addEventListener('toggle', () => store.set('nbtgen.optsOpen', $('opts').open ? '1' : '0'));
 
 // ---------- Kosten ----------
 let history = [];          // Gesprächsverlauf mit Claude (für Änderungen)
 let sessionCost = Number(store.get('nbtgen.sessionCost') || 0);
-const usd = v => v < 0.01 ? '$' + v.toFixed(4) : '$' + v.toFixed(v < 1 ? 3 : 2);
 function updateSessionCost() {
-  $('sessionCost').innerHTML = `<h3>Bisher ausgegeben</h3><b>${usd(sessionCost)}</b> in diesem Browser <button id="resetCost" style="float:right;padding:2px 8px;font-size:11px">zurücksetzen</button>`;
-  $('resetCost').onclick = () => { sessionCost = 0; store.set('nbtgen.sessionCost', '0'); updateSessionCost(); };
+  $('sessionCost').textContent = usd(sessionCost);
+  $('sessionCostFoot').textContent = `Bisher ausgegeben: ${usd(sessionCost)}`;
 }
+$('resetCost').onclick = () => { sessionCost = 0; store.set('nbtgen.sessionCost', '0'); updateSessionCost(); };
 function estimateInputTokens(extra) {
   const chars = SYSTEM_PROMPT.length + JSON.stringify(history.map(m => typeof m.content === 'string' ? m.content
     : m.content.filter(b => b.type === 'text').map(b => b.text).join(''))).length + (extra || '').length + 400;
@@ -686,8 +890,9 @@ function updateEstimate() {
   const extra = history.length ? $('refine').value : $('prompt').value + (b ? baseDescription(b) : '');
   const inTok = estimateInputTokens(extra);
   const costLo = (inTok * m.in + lo * m.out) / 1e6, costHi = (inTok * m.in + hi * m.out) / 1e6;
-  $('estimate').innerHTML = `<h3>Geschätzte Kosten pro Anfrage</h3><b>${usd(costLo)} – ${usd(costHi)}</b><br>
-    <span class="muted">~${inTok.toLocaleString('de')} Eingabe-Tokens à $${m.in}/1M, ${lo.toLocaleString('de')}–${hi.toLocaleString('de')} Ausgabe-Tokens à $${m.out}/1M (inkl. Denken). Höherer Aufwand = gründlicher, aber teurer.</span>`;
+  $('estChip').textContent = `≈ ${usd(costLo)}–${usd(costHi)}`;
+  $('estimate').textContent = `Geschätzt: ~${inTok.toLocaleString('de')} Eingabe- und ${lo.toLocaleString('de')}–${hi.toLocaleString('de')} Ausgabe-Tokens. Mehr Gründlichkeit = bessere Entwürfe, aber teurer.`;
+  $('optsSum').textContent = `${m.label.replace(/^Claude /, '').replace(/ \(.*\)$/, '')} · ${$('effort').selectedOptions[0].text} · ${$('version').selectedOptions[0].text}`;
 }
 $('prompt').addEventListener('input', updateEstimate);
 $('refine').addEventListener('input', updateEstimate);
@@ -715,7 +920,7 @@ function echoContent(content) {
 
 async function ask(text, first) {
   const key = $('apiKey').value.trim();
-  if (!key) { setStatus('<span class="err">Bitte zuerst deinen API-Key eintragen.</span>'); return; }
+  if (!key) { toast('Bitte zuerst deinen Claude API-Key eintragen.', 'err'); $('settingsDlg').showModal(); $('apiKey').focus(); return; }
   const modelId = $('model').value, m = MODELS[modelId];
   const pending = [...history, { role: 'user', content: userMessage(text, first) }];
   const params = {
@@ -729,10 +934,9 @@ async function ask(text, first) {
   if (m.fallbacks) { params.betas = ['server-side-fallback-2026-07-01']; params.fallbacks = 'default'; }
 
   busy(true);
-  $('statusBox').style.display = '';
-  $('thinking').textContent = '';
-  setStatus('Verbinde mit Claude …');
-  let outChars = 0, thinkChars = 0;
+  $('thinking').textContent = ''; $('thinkBox').hidden = true;
+  setStatus('<span class="spinner"></span>Verbinde mit Claude …');
+  let outChars = 0;
   try {
     const SDK = await loadSDK();
     const client = new SDK({ apiKey: key, dangerouslyAllowBrowser: true });
@@ -740,41 +944,37 @@ async function ask(text, first) {
     currentStream = stream;
     for await (const ev of stream) {
       if (ev.type === 'content_block_delta') {
-        if (ev.delta.type === 'thinking_delta') { thinkChars += ev.delta.thinking.length; $('thinking').textContent += ev.delta.thinking; $('thinking').scrollTop = 1e9; }
+        if (ev.delta.type === 'thinking_delta') { $('thinkBox').hidden = false; $('thinking').textContent += ev.delta.thinking; $('thinking').scrollTop = 1e9; }
         else if (ev.delta.type === 'text_delta') outChars += ev.delta.text.length;
-        setStatus(thinkChars && !outChars ? 'Claude plant den Entwurf …' : `Claude schreibt den Bau-Code … (~${Math.round(outChars / 3.6).toLocaleString('de')} Tokens)`);
+        setStatus(outChars ? `<span class="spinner"></span>Claude schreibt den Bau-Code … <span class="muted">(~${Math.round(outChars / 3.6).toLocaleString('de')} Tokens)</span>`
+          : '<span class="spinner"></span>Claude plant den Entwurf …');
       }
     }
     const msg = await stream.finalMessage();
     const cost = usageCost(msg.usage, modelId);
     sessionCost += cost; store.set('nbtgen.sessionCost', String(sessionCost)); updateSessionCost();
-    const u = msg.usage;
-    const servedBy = msg.model && msg.model !== modelId ? ` <span class="warn">(beantwortet von ${msg.model} per Fallback)</span>` : '';
-    $('lastCost').innerHTML = `Diese Anfrage: <b>${usd(cost)}</b>${servedBy}<br><span class="muted">${(u.input_tokens + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0)).toLocaleString('de')} Eingabe- / ${u.output_tokens.toLocaleString('de')} Ausgabe-Tokens</span>`;
+    const servedBy = msg.model && msg.model !== modelId ? ` · per Fallback von ${msg.model}` : '';
+    $('lastCost').textContent = `${usd(cost)}${servedBy}`;
 
-    if (msg.stop_reason === 'refusal') {
-      setStatus('<span class="err">Claude hat diese Anfrage abgelehnt. Formuliere sie bitte um.</span>');
-      return;
-    }
+    if (msg.stop_reason === 'refusal') { setStatus('<span class="err">Claude hat diese Anfrage abgelehnt. Formuliere sie bitte um.</span>'); return; }
     const textOut = msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
     const code = extractCode(textOut);
     history = [...pending, { role: 'assistant', content: echoContent(msg.content) }];
-    $('resultBox').style.display = '';
-    $('refineBox').style.display = '';
+    $('resultBox').hidden = false; $('refineBox').hidden = false;
     $('desc').textContent = textOut.replace(/```[\s\S]*?(```|$)/g, '').trim() || '–';
     if (!code) {
       setStatus(msg.stop_reason === 'max_tokens'
-        ? '<span class="err">Die Antwort wurde abgeschnitten (Token-Limit). Versuche eine kleinere Struktur oder niedrigeren Aufwand.</span>'
+        ? '<span class="err">Die Antwort wurde abgeschnitten (Token-Limit). Versuche eine kleinere Struktur oder weniger Gründlichkeit.</span>'
         : '<span class="err">Claude hat keinen Code geliefert.</span>');
       return;
     }
     $('code').value = code;
-    if (first) $('fileName').value = suggestName(text);
-    setStatus('Führe Bau-Code aus …');
+    if (first && !activeBase()) $('fileName').value = suggestName(text);
+    setStatus('<span class="spinner"></span>Führe Bau-Code aus …');
     await runCode(code);
   } catch (e) {
     if (isApiErr(e, 'APIUserAbortError')) setStatus('Abgebrochen.');
-    else if (isApiErr(e, 'AuthenticationError')) setStatus('<span class="err">API-Key ungültig (401). Bitte prüfen.</span>');
+    else if (isApiErr(e, 'AuthenticationError')) setStatus('<span class="err">API-Key ungültig (401). Bitte in den Einstellungen prüfen.</span>');
     else if (isApiErr(e, 'PermissionDeniedError')) setStatus('<span class="err">Kein Zugriff auf dieses Modell (403).</span>');
     else if (isApiErr(e, 'RateLimitError')) setStatus('<span class="err">Rate-Limit erreicht (429). Kurz warten und erneut versuchen.</span>');
     else if (isApiErr(e, 'APIError')) setStatus(`<span class="err">API-Fehler ${e.status ?? ''}: ${escapeHtml(e.message)}</span>`);
@@ -785,26 +985,19 @@ async function ask(text, first) {
     updateEstimate();
   }
 }
-
-function suggestName(t) {
-  return (t.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-    .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').split('_').slice(0, 4).join('_')) || 'struktur';
-}
-function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-function setStatus(html) { $('status').innerHTML = html; }
 function busy(b) {
   for (const id of ['generate', 'refineBtn', 'newBtn', 'fixBtn', 'runCode']) $(id).disabled = b;
-  $('abort').style.display = b ? '' : 'none';
+  $('abort').hidden = !b;
 }
 $('abort').onclick = () => currentStream?.abort();
 $('generate').onclick = () => {
   const t = $('prompt').value.trim();
-  if (!t) { $('statusBox').style.display = ''; setStatus('<span class="err">Bitte beschreibe zuerst, was gebaut werden soll.</span>'); return; }
+  if (!t) { toast('Beschreibe zuerst, was gebaut werden soll.', 'err'); $('prompt').focus(); return; }
   history = [];
   ask(t, true);
 };
 $('refineBtn').onclick = () => { const t = $('refine').value.trim(); if (t) { ask(t, false); $('refine').value = ''; } };
-$('newBtn').onclick = () => { history = []; $('refineBox').style.display = 'none'; $('resultBox').style.display = 'none'; $('prompt').focus(); updateEstimate(); };
+$('newBtn').onclick = () => { history = []; $('refineBox').hidden = true; $('resultBox').hidden = true; $('statusCard').hidden = true; $('prompt').focus(); updateEstimate(); };
 let lastError = null;
 $('fixBtn').onclick = () => ask(`Running your code failed with this error:\n${lastError}\nPlease fix it and output the complete corrected code.`, false);
 
@@ -834,42 +1027,40 @@ function execCode(code, baseFlat) {
 
 let structure = null;
 async function runCode(code) {
-  $('fixBtn').style.display = 'none';
+  $('fixBtn').hidden = true;
   try {
     const b = activeBase();
     const flat = await execCode(code, b?.flat);
-    showStructure(buildStructure(flat, b));
-    setStatus('<span class="ok">Fertig.</span> Vorschau drehen: ziehen · zoomen: scrollen · verschieben: rechte Maustaste.');
-    $('runMsg').textContent = '';
+    await showStructure(buildStructure(flat, b));
+    setStatus('<span class="ok">Fertig.</span> <span class="muted">Ziehen = drehen · Scrollen = zoomen · Rechtsklick = verschieben</span>');
+    $('runMsg').textContent = 'Ausgeführt.';
     return true;
   } catch (e) {
     lastError = String(e.message || e).slice(0, 2000);
     setStatus(`<span class="err">Fehler im Bau-Code:\n${escapeHtml(lastError)}</span>`);
-    $('runMsg').textContent = 'Fehler – siehe Status links.';
-    if (history.length) $('fixBtn').style.display = '';
+    $('runMsg').textContent = 'Fehler – siehe Status.';
+    if (history.length) $('fixBtn').hidden = false;
     return false;
   }
 }
-$('runCode').onclick = () => { setStatus('Führe Bau-Code aus …'); $('statusBox').style.display = ''; runCode($('code').value); };
+$('runCode').onclick = () => { setStatus('<span class="spinner"></span>Führe Bau-Code aus …'); runCode($('code').value); };
 
-function showStructure(s) {
+async function showStructure(s) {
   structure = s;
   structure.names = s.palette.map(p => p.name);
   $('download').disabled = false;
-  $('empty').style.display = 'none';
-  $('layer').disabled = false;
+  $('empty').hidden = true; $('chipbar').hidden = false; $('floatbar').hidden = false;
   setupLayerRange(true);
+  await prepareRender();
   renderBlockList();
   renderPreview(true);
 }
 
-// ---------- Vorhandene .nbt laden (Drag & Drop / Datei öffnen) ----------
+// ---------- Dateien: .nbt öffnen, JAR/ZIP als Texturen, Drag & Drop ----------
 let base = null;
 const activeBase = () => (base && $('useBase').checked ? base : null);
 async function loadFile(file) {
-  $('statusBox').style.display = '';
   try {
-    setStatus('Lese ' + escapeHtml(file.name) + ' …');
     const raw = await gunzipMaybe(new Uint8Array(await file.arrayBuffer()));
     const loaded = structureFromNBT(readNBT(raw));
     base = { ...loaded, name: file.name };
@@ -877,74 +1068,555 @@ async function loadFile(file) {
     if (dvMatch) $('version').value = dvMatch[0];
     else if (loaded.dataVersion) {
       VERSIONS.orig = { dv: loaded.dataVersion, label: `wie Originaldatei (DataVersion ${loaded.dataVersion})` };
-      if (!$('version').querySelector('option[value=orig]')) $('version').add(new Option('Original (DV ' + loaded.dataVersion + ')', 'orig'));
-      else $('version').querySelector('option[value=orig]').text = 'Original (DV ' + loaded.dataVersion + ')';
+      let o = $('version').querySelector('option[value=orig]');
+      if (!o) { o = new Option('', 'orig'); $('version').add(o, 0); }
+      o.text = 'Original (DataVersion ' + loaded.dataVersion + ')';
       $('version').value = 'orig';
     }
-    $('baseBox').style.display = '';
-    $('baseInfo').innerHTML = `<b>${escapeHtml(file.name)}</b><br><span class="muted">${loaded.size.join('×')} · ${(loaded.flat.length / 2).toLocaleString('de')} Blöcke · ${loaded.blockNbt.size} Block-Entities · ${loaded.entities.length} Entities · DataVersion ${loaded.dataVersion ?? '?'}</span>`;
+    $('baseBox').hidden = false;
+    $('baseInfo').innerHTML = `<b>${escapeHtml(file.name)}</b><div class="muted" style="font-size:12px">${loaded.size.join(' × ')} · ${(loaded.flat.length / 2).toLocaleString('de')} Blöcke · ${loaded.blockNbt.size} Block-Entities · ${loaded.entities.length} Entities · DataVersion ${loaded.dataVersion ?? '?'}</div>`;
     $('useBase').checked = true;
     $('fileName').value = file.name.replace(/\.nbt$/i, '') + '_neu';
-    $('prompt').placeholder = 'Was soll an dieser Struktur geändert werden? z. B. „Baue einen zweiten Stock mit Spitzdach darauf“ oder „ersetze alle Eichenbretter durch Fichte“';
-    history = []; $('refineBox').style.display = 'none'; $('resultBox').style.display = 'none';
+    $('prompt').placeholder = 'Was soll an dieser Struktur geändert werden? z. B. „Baue einen zweiten Stock mit Spitzdach darauf“ oder „Ersetze alle Eichenbretter durch Fichte“';
+    history = []; $('refineBox').hidden = true; $('resultBox').hidden = true; $('statusCard').hidden = true;
     $('code').value = '';
-    showStructure(buildStructure(loaded.flat, base));
-    setStatus(`<span class="ok">Geladen.</span> Du kannst sie ansehen, filtern, wieder exportieren oder Claude Änderungen beschreiben.`);
+    await showStructure(buildStructure(loaded.flat, base));
+    toast(`${file.name} geladen`);
     updateEstimate();
   } catch (e) {
-    setStatus(`<span class="err">Datei konnte nicht gelesen werden: ${escapeHtml(String(e.message || e))}</span>`);
+    toast(`${file.name} konnte nicht gelesen werden: ${e.message || e}`, 'err');
   }
 }
-$('openFile').onclick = () => $('fileInput').click();
-$('fileInput').onchange = () => { if ($('fileInput').files[0]) loadFile($('fileInput').files[0]); $('fileInput').value = ''; };
+function handleFiles(files) {
+  for (const f of files) {
+    if (/\.nbt$/i.test(f.name)) loadFile(f);
+    else if (/\.(jar|zip)$/i.test(f.name)) importPack(f);
+    else toast(`${f.name}: unbekannter Dateityp (erwartet .nbt, .jar oder .zip)`, 'err');
+  }
+}
+$('openFile').onclick = $('emptyOpen').onclick = () => $('fileInput').click();
+$('fileInput').onchange = () => { handleFiles([...$('fileInput').files]); $('fileInput').value = ''; };
 let dragDepth = 0;
 addEventListener('dragenter', e => { if ([...e.dataTransfer.types].includes('Files')) { dragDepth++; document.body.classList.add('dragging'); } });
 addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
 addEventListener('dragover', e => e.preventDefault());
 addEventListener('drop', e => {
   e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging');
-  const f = e.dataTransfer.files[0];
-  if (f) loadFile(f);
+  handleFiles([...e.dataTransfer.files]);
 });
 $('removeBase').onclick = () => {
-  base = null; $('baseBox').style.display = 'none';
-  $('prompt').placeholder = 'z. B. Eine verwinkelte Fischerhütte auf Stelzen aus Fichtenholz, mit Steg, Bootsanleger, Laternen und einem kleinen Räucherschuppen';
+  base = null; $('baseBox').hidden = true;
+  $('prompt').placeholder = 'z. B. Eine verwinkelte Fischerhütte auf Stelzen aus Fichtenholz, mit Steg, Laternen und einem kleinen Räucherschuppen';
   updateEstimate();
 };
 $('useBase').onchange = updateEstimate;
 
+// ---------- Texturen & Modelle aus Minecraft-JAR / Mod-JARs / Ressourcenpaketen ----------
+// Alles bleibt lokal: Dateien werden im Browser entpackt und in IndexedDB gespeichert.
+const assets = new Map();        // "ns/blockstates/x.json" | "ns/models/block/x.json" -> Text, "ns/textures/block/x.png" -> Blob
+let texSources = [];             // [{ name, count }]
+const idb = {
+  db: null,
+  async open() {
+    if (this.db) return this.db;
+    this.db = await new Promise((res, rej) => {
+      const r = indexedDB.open('nbtgen', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('assets');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    return this.db;
+  },
+  async tx(mode, fn) {
+    const db = await this.open();
+    return new Promise((res, rej) => { const t = db.transaction('assets', mode); const out = fn(t.objectStore('assets')); t.oncomplete = () => res(out); t.onerror = () => rej(t.error); });
+  },
+  putMany(entries) { return this.tx('readwrite', st => { for (const [k, v] of entries) st.put(v, k); }); },
+  clear() { return this.tx('readwrite', st => st.clear()); },
+  async loadAll(map) {
+    const db = await this.open();
+    await new Promise((res, rej) => {
+      const req = db.transaction('assets').objectStore('assets').openCursor();
+      req.onsuccess = () => { const c = req.result; if (!c) return res(); map.set(c.key, c.value); c.continue(); };
+      req.onerror = () => rej(req.error);
+    });
+  },
+};
+async function readZip(file, filter) {
+  const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer), dec = new TextDecoder();
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65558); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('keine gültige JAR/ZIP-Datei');
+  const n = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('beschädigtes ZIP-Verzeichnis');
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    const name = dec.decode(buf.subarray(p + 46, p + 46 + nl));
+    p += 46 + nl + el + cl;
+    const key = filter(name);
+    if (!key) continue;
+    const start = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true);
+    out.push({ key, method, data: buf.subarray(start, start + csize) });
+  }
+  return out;
+}
+async function inflate(e) {
+  if (e.method === 0) return e.data;
+  if (e.method !== 8) throw new Error('nicht unterstützte Kompression');
+  return new Uint8Array(await new Response(new Blob([e.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+}
+const ASSET_RE = /^assets\/([a-z0-9_.\-]+)\/(blockstates\/[^\s]+\.json|models\/block\/[^\s]+\.json|textures\/block\/[^\s]+\.png)$/;
+async function importPack(file) {
+  if (!$('texDlg').open) $('texDlg').showModal();
+  $('texProgress').innerHTML = `<span class="spinner"></span>Lese ${escapeHtml(file.name)} …`;
+  try {
+    const entries = await readZip(file, name => { const m = ASSET_RE.exec(name); return m ? m[1] + '/' + m[2] : null; });
+    if (!entries.length) throw new Error('keine Block-Modelle oder -Texturen gefunden');
+    const dec = new TextDecoder(), result = [];
+    for (let i = 0; i < entries.length; i += 64) {
+      const chunk = entries.slice(i, i + 64);
+      const data = await Promise.all(chunk.map(inflate));
+      chunk.forEach((e, j) => result.push([e.key, e.key.endsWith('.png') ? new Blob([data[j]], { type: 'image/png' }) : dec.decode(data[j])]));
+      $('texProgress').innerHTML = `<span class="spinner"></span>Entpacke ${escapeHtml(file.name)} … ${Math.round((i + chunk.length) / entries.length * 100)} %`;
+    }
+    texSources = texSources.filter(s => s.name !== file.name).concat({ name: file.name, count: result.length });
+    result.push(['__sources', JSON.stringify(texSources)]);
+    for (const [k, v] of result) assets.set(k, v);
+    try { await idb.putMany(result); } catch { toast('Texturen konnten nicht dauerhaft gespeichert werden (privates Fenster?). Sie gelten nur bis zum Neuladen.', 'err'); }
+    $('texProgress').innerHTML = `<span class="ok">${escapeHtml(file.name)}: ${result.length - 1} Dateien übernommen.</span>`;
+    toast(`Texturen aus ${file.name} geladen`);
+    await assetsChanged();
+  } catch (e) {
+    $('texProgress').innerHTML = `<span class="err">${escapeHtml(file.name)}: ${escapeHtml(e.message || e)}</span>`;
+  }
+}
+async function assetsChanged() {
+  jsonCache.clear(); modelCache.clear(); geomCache.clear();
+  try { texSources = JSON.parse(assets.get('__sources') || '[]'); } catch { texSources = []; }
+  const has = texSources.length > 0;
+  $('texDot').hidden = !has;
+  $('texSources').innerHTML = texSources.map(s => `<div><svg viewBox="0 0 24 24" style="width:14px;height:14px;color:var(--accent)"><path d="M20 6 9 17l-5-5"/></svg>${escapeHtml(s.name)}<span class="muted" style="margin-left:auto">${s.count.toLocaleString('de')} Dateien</span></div>`).join('');
+  $('texClear').hidden = !has;
+  if (structure) { await prepareRender(); renderBlockList(); renderPreview(false); }
+}
+$('texPick').onclick = () => $('texInput').click();
+$('texInput').onchange = () => { for (const f of $('texInput').files) importPack(f); $('texInput').value = ''; };
+$('texClear').onclick = async () => {
+  assets.clear();
+  try { await idb.clear(); } catch {}
+  $('texProgress').textContent = 'Alle Texturen entfernt.';
+  await assetsChanged();
+};
+
+// Blockstates & Modelle auflösen
+const jsonCache = new Map(), modelCache = new Map(), geomCache = new Map();
+function json(key) {
+  if (jsonCache.has(key)) return jsonCache.get(key);
+  const t = assets.get(key);
+  let j = null;
+  if (typeof t === 'string') try { j = JSON.parse(t); } catch {}
+  jsonCache.set(key, j);
+  return j;
+}
+const rid = id => { const i = id.indexOf(':'); return i < 0 ? ['minecraft', id] : [id.slice(0, i), id.slice(i + 1)]; };
+const texKey = t => { const [ns, p] = rid(t); return `${ns}/textures/${p}.png`; };
+function loadModel(id, depth = 0) {
+  if (modelCache.has(id)) return modelCache.get(id);
+  const [ns, p] = rid(id);
+  const j = json(`${ns}/models/${p}.json`);
+  let m = null;
+  if (j) {
+    m = { textures: {}, elements: null };
+    if (j.parent && depth < 24) {
+      const par = loadModel(j.parent, depth + 1);
+      if (par) { m.textures = { ...par.textures }; m.elements = par.elements; }
+    }
+    Object.assign(m.textures, j.textures || {});
+    if (j.elements) m.elements = j.elements;
+  }
+  modelCache.set(id, m);
+  return m;
+}
+function resolveTex(m, ref) {
+  let r = ref;
+  for (let i = 0; i < 12 && r && r.startsWith('#'); i++) r = m.textures[r.slice(1)];
+  return r && !r.startsWith('#') ? r : null;
+}
+function matchWhen(w, props) {
+  if (w.OR) return w.OR.some(x => matchWhen(x, props));
+  if (w.AND) return w.AND.every(x => matchWhen(x, props));
+  return Object.entries(w).every(([k, v]) => String(v).split('|').includes(props[k]));
+}
+function stateModels(name, props) {
+  const [ns, n] = rid(name);
+  const bs = json(`${ns}/blockstates/${n}.json`);
+  if (!bs) return null;
+  const out = [];
+  if (bs.variants) {
+    let best = null, bestScore = -1;
+    for (const [k, v] of Object.entries(bs.variants)) {
+      let ok = true, score = 0;
+      for (const c of k ? k.split(',') : []) {
+        const [a, b] = c.split('=');
+        if (a in props) { if (props[a] !== b) { ok = false; break; } score++; }
+      }
+      if (ok && score > bestScore) { best = v; bestScore = score; }
+    }
+    if (best) out.push(Array.isArray(best) ? best[0] : best);
+  }
+  if (bs.multipart) for (const part of bs.multipart)
+    if (!part.when || matchWhen(part.when, props)) out.push(Array.isArray(part.apply) ? part.apply[0] : part.apply);
+  return out;
+}
+
+// Geometrie: Flächen in Pixel-Koordinaten (0..16) wie in Minecraft-Modellen
+const DIRV = { down: [0, -1, 0], up: [0, 1, 0], north: [0, 0, -1], south: [0, 0, 1], west: [-1, 0, 0], east: [1, 0, 0] };
+function faceCorners(d, [x1, y1, z1], [x2, y2, z2]) {   // Reihenfolge: oben-links, oben-rechts, unten-rechts, unten-links (von außen gesehen)
+  switch (d) {
+    case 'north': return [[x2, y2, z1], [x1, y2, z1], [x1, y1, z1], [x2, y1, z1]];
+    case 'south': return [[x1, y2, z2], [x2, y2, z2], [x2, y1, z2], [x1, y1, z2]];
+    case 'west': return [[x1, y2, z1], [x1, y2, z2], [x1, y1, z2], [x1, y1, z1]];
+    case 'east': return [[x2, y2, z2], [x2, y2, z1], [x2, y1, z1], [x2, y1, z2]];
+    case 'up': return [[x1, y2, z1], [x2, y2, z1], [x2, y2, z2], [x1, y2, z2]];
+    case 'down': return [[x1, y1, z2], [x2, y1, z2], [x2, y1, z1], [x1, y1, z1]];
+  }
+  return null;
+}
+function defaultUV(d, [x1, y1, z1], [x2, y2, z2]) {
+  switch (d) {
+    case 'down': return [x1, 16 - z2, x2, 16 - z1];
+    case 'up': return [x1, z1, x2, z2];
+    case 'north': return [16 - x2, 16 - y2, 16 - x1, 16 - y1];
+    case 'south': return [x1, 16 - y2, x2, 16 - y1];
+    case 'west': return [z1, 16 - y2, z2, 16 - y1];
+    case 'east': return [16 - z2, 16 - y2, 16 - z1, 16 - y1];
+  }
+}
+function rotP(p, axis, deg, o) {
+  const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  let x = p[0] - o[0], y = p[1] - o[1], z = p[2] - o[2];
+  if (axis === 'x') [y, z] = [y * c - z * s, y * s + z * c];
+  else if (axis === 'y') [z, x] = [z * c - x * s, z * s + x * c];
+  else [x, y] = [x * c - y * s, x * s + y * c];
+  return [x + o[0], y + o[1], z + o[2]];
+}
+// Blockstate-Rotation: Minecraft dreht im Uhrzeigersinn (von oben bzw. Osten gesehen) -> negativer Winkel
+function rotVariant(p, ref, o) {
+  if (ref.x) p = rotP(p, 'x', -ref.x, o);
+  if (ref.y) p = rotP(p, 'y', -ref.y, o);
+  return p;
+}
+function stateGeom(name, props) {
+  const key = name + JSON.stringify(props);
+  let g = geomCache.get(key);
+  if (!g) { g = (texSources.length && modelGeom(name, props)) || fallbackGeom(name, props, null); geomCache.set(key, g); }
+  return g;
+}
+const INVISIBLE = /^(air|cave_air|void_air|structure_void|barrier|light|moving_piston)$/;
+function modelGeom(name, props) {
+  const short = name.split(':')[1] || name;
+  if (INVISIBLE.test(short)) return { quads: [], fullCube: false };
+  if (short === 'water' || short === 'lava') return fluidGeom(name, short);
+  const refs = stateModels(name, props);
+  if (!refs) return null;
+  const quads = [];
+  let fullCube = false, particle = null;
+  for (const ref of refs) {
+    const m = ref && loadModel(ref.model);
+    if (!m) continue;
+    particle = particle || resolveTex(m, '#particle');
+    for (const el of m.elements || []) {
+      const isFull = !el.rotation && el.from.every(v => v === 0) && el.to.every(v => v === 16);
+      if (isFull) fullCube = true;
+      for (const [d, face] of Object.entries(el.faces || {})) {
+        let c = faceCorners(d, el.from, el.to);
+        if (!c) continue;
+        if (el.rotation) {
+          const r = el.rotation;
+          c = c.map(p => rotP(p, r.axis, r.angle, r.origin));
+          if (r.rescale) {
+            const sc = 1 / Math.cos(Math.abs(r.angle) * Math.PI / 180);
+            c = c.map(p => p.map((v, i) => 'xyz'[i] === r.axis ? v : r.origin[i] + (v - r.origin[i]) * sc));
+          }
+        }
+        c = c.map(p => rotVariant(p, ref, [8, 8, 8]));
+        let cull = null;
+        if (face.cullface) {
+          const v = DIRV[face.cullface === 'bottom' ? 'down' : face.cullface];
+          if (v) cull = rotVariant(v, ref, [0, 0, 0]).map(Math.round);
+        }
+        const t = resolveTex(m, face.texture);
+        quads.push({ c, uv: face.uv || defaultUV(d, el.from, el.to), rot: face.rotation || 0, tex: t ? texKey(t) : null,
+          cull, tint: face.tintindex !== undefined, full: isFull, dir: d });
+      }
+    }
+  }
+  // Block-Entities (Truhe, Bett, Schild …) haben kein Modell -> Ersatzform mit ihrer Partikel-Textur
+  if (!quads.length) return refs.length ? fallbackGeom(name, props, particle ? texKey(particle) : null) : { quads: [], fullCube: false };
+  return { quads, fullCube };
+}
+function boxQuads(from, to, tex, quads) {
+  for (const d of Object.keys(DIRV)) {
+    const v = DIRV[d], onEdge = (v[0] === 1 && to[0] === 16) || (v[0] === -1 && from[0] === 0) || (v[1] === 1 && to[1] === 16)
+      || (v[1] === -1 && from[1] === 0) || (v[2] === 1 && to[2] === 16) || (v[2] === -1 && from[2] === 0);
+    quads.push({ c: faceCorners(d, from, to), uv: defaultUV(d, from, to), rot: 0, tex, cull: onEdge ? v : null, tint: false, full: true, dir: d });
+  }
+}
+function fallbackGeom(name, props, tex) {
+  const quads = [], pieces = piecesFor(name, props);
+  let fullCube = false;
+  for (const [cx, cy, cz, sx, sy, sz] of pieces) {
+    const from = [(cx - sx / 2) * 16, (cy - sy / 2) * 16, (cz - sz / 2) * 16], to = [(cx + sx / 2) * 16, (cy + sy / 2) * 16, (cz + sz / 2) * 16];
+    if (sx === 1 && sy === 1 && sz === 1) fullCube = true;
+    boxQuads(from, to, tex, quads);
+  }
+  if (!fullCube) quads.forEach(q => q.full = false);
+  return { quads, fullCube, fallback: true, trans: isTransparent(name) };
+}
+function fluidGeom(name, short) {
+  const quads = [];
+  boxQuads([0, 0, 0], [16, 14.2, 16], `minecraft/textures/block/${short}_still.png`, quads);
+  quads.forEach(q => { q.tint = short === 'water'; q.full = false; if (q.dir === 'up') q.cull = null; });
+  return { quads, fullCube: false, fluid: true };
+}
+function tintFor(name) {
+  const n = name.split(':')[1] || name;
+  if (n === 'water' || n === 'bubble_column' || n.includes('water_cauldron')) return '#3f76e4';
+  if (n === 'birch_leaves') return '#80a755';
+  if (n === 'spruce_leaves') return '#619961';
+  if (n === 'mangrove_leaves') return '#8db127';
+  if (n.endsWith('leaves') || n.includes('vine')) return '#77ab2f';
+  if (n === 'lily_pad') return '#208030';
+  if (n === 'redstone_wire') return '#b40000';
+  if (n.includes('stem')) return '#8fb83a';
+  if (/grass|fern|sugar_cane/.test(n)) return '#91bd59';
+  return '#ffffff';
+}
+
+// ---------- 3D-Vorschau (three.js wird nachgeladen) ----------
+let renderer, scene, camera, controls, meshes = [], gridHelper = null, prep = null;
+async function initPreview() {
+  try {
+    THREE = await import('three');
+    ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+  } catch (e) {
+    $('emptyText').innerHTML = '3D-Vorschau nicht verfügbar: three.js konnte nicht von <code>cdn.jsdelivr.net</code> geladen werden (Blocker? offline?). Laden, Blockliste und .nbt-Export funktionieren trotzdem.';
+    return;
+  }
+  try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setClearColor(0x000000, 0); }
+  catch { $('emptyText').innerHTML = '3D-Vorschau nicht verfügbar: WebGL ist in diesem Browser deaktiviert. Laden, Blockliste und .nbt-Export funktionieren trotzdem.'; return; }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  $('canvasWrap').appendChild(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  new ResizeObserver(resize).observe($('view'));
+  resize();
+  (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+  if (structure) { await prepareRender(); renderBlockList(); renderPreview(true); }
+}
+function resize() {
+  const r = $('view').getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  renderer.domElement.style.width = r.width + 'px'; renderer.domElement.style.height = r.height + 'px';
+  camera.aspect = r.width / Math.max(r.height, 1); camera.updateProjectionMatrix();
+}
+
+// Einmal pro Struktur/Texturstand: Geometrie je Blockzustand + Textur-Atlas
+async function prepareRender() {
+  if (!structure) return;
+  const s = structure;
+  const geoms = s.palette.map(p => stateGeom(p.name, p.props));
+  const keys = new Set();
+  for (const g of geoms) for (const q of g.quads) if (q.tex) keys.add(q.tex);
+  const imgs = new Map();
+  await Promise.all([...keys].map(async k => {
+    const b = assets.get(k);
+    if (b instanceof Blob) try { imgs.set(k, await createImageBitmap(b)); } catch {}
+  }));
+  let S = 16;
+  for (const im of imgs.values()) S = Math.max(S, Math.min(im.width, 64));
+  const list = [...imgs.keys()], cols = Math.ceil(Math.sqrt(list.length + 1)), rows = Math.ceil((list.length + 1) / cols);
+  const canvas = document.createElement('canvas');
+  canvas.width = cols * S; canvas.height = rows * S;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, S, S);      // Zelle 0: weiß für einfarbige Ersatzblöcke
+  const info = new Map();
+  list.forEach((k, i) => {
+    const cell = i + 1, x = (cell % cols) * S, y = Math.floor(cell / cols) * S, im = imgs.get(k);
+    ctx.drawImage(im, 0, 0, im.width, Math.min(im.width, im.height), x, y, S, S);   // animierte Texturen: erstes Bild
+    const d = ctx.getImageData(x, y, S, S).data;
+    let zero = 0, part = 0;
+    for (let j = 3; j < d.length; j += 4) { if (d[j] === 0) zero++; else if (d[j] < 250) part++; }
+    info.set(k, { cell, cls: part > S * S * 0.02 ? 'trans' : zero ? 'cut' : 'opaque' });
+    im.close?.();
+  });
+  // Verdeckt ein Block seine Nachbarn vollständig? (volle, undurchsichtige Würfelseiten in allen 6 Richtungen)
+  const occl = geoms.map(g => {
+    if (!g.fullCube) return false;
+    const dirs = new Set();
+    for (const q of g.quads) if (q.full && q.cull) {
+      const opaque = q.tex ? info.get(q.tex)?.cls === 'opaque' : !g.trans;
+      if (opaque) dirs.add(q.cull.join());
+    }
+    return dirs.size === 6;
+  });
+  const thumbs = new Map();
+  if (prep?.tex) prep.tex.dispose();
+  let tex = null;
+  if (THREE) {
+    tex = new THREE.CanvasTexture(canvas);
+    tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false;
+    tex.colorSpace = THREE.SRGBColorSpace;
+  }
+  prep = { geoms, info, S, cols, W: canvas.width, H: canvas.height, occl, tex, canvas, thumbs };
+}
+function thumbFor(name) {
+  if (!prep || !texSources.length) return null;
+  if (prep.thumbs.has(name)) return prep.thumbs.get(name);
+  let url = null;
+  const i = structure.names.indexOf(name), g = i >= 0 ? prep.geoms[i] : null;
+  const q = g && (g.quads.find(q => q.tex && !q.tint && (q.dir === 'north' || q.dir === 'south') && prep.info.has(q.tex)) || g.quads.find(q => q.tex && prep.info.has(q.tex)));
+  if (q) {
+    const { cell } = prep.info.get(q.tex), c = document.createElement('canvas');
+    c.width = c.height = prep.S;
+    c.getContext('2d').drawImage(prep.canvas, (cell % prep.cols) * prep.S, Math.floor(cell / prep.cols) * prep.S, prep.S, prep.S, 0, 0, prep.S, prep.S);
+    url = c.toDataURL();
+  }
+  prep.thumbs.set(name, url);
+  return url;
+}
+
+function renderPreview(fitCamera) {
+  if (!structure || !renderer || !prep) return;
+  for (const m of meshes) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
+  meshes = [];
+  const s = structure, [X, Y, Z] = s.size, inLayer = layerVisible();
+  const shown = s.palette.map(p => !hiddenView.has(p.name));
+  const useGrid = X * Y * Z <= 40e6, grid = useGrid ? new Int32Array(X * Y * Z) : new Map();
+  const gi = (x, y, z) => (x * Y + y) * Z + z;
+  const visible = [];
+  for (let i = 0; i < s.count; i++) if (shown[s.st[i]] && inLayer(i)) {
+    visible.push(i);
+    useGrid ? (grid[gi(s.xs[i], s.ys[i], s.zs[i])] = s.st[i] + 1) : grid.set(gi(s.xs[i], s.ys[i], s.zs[i]), s.st[i] + 1);
+  }
+  const at = (x, y, z) => x < 0 || y < 0 || z < 0 || x >= X || y >= Y || z >= Z ? 0 : useGrid ? grid[gi(x, y, z)] : (grid.get(gi(x, y, z)) || 0);
+  const B = { opaque: [], cut: [], trans: [] };
+  for (const k in B) B[k] = { pos: [], uv: [], col: [], idx: [], n: 0 };
+  const { info, S, cols, W, H, occl, geoms } = prep, names = structure.names;
+  const col = new THREE.Color(), tintCache = new Map(), baseCache = new Map();
+  const cx = X / 2, cz = Z / 2, E = 0.02;
+  for (const i of visible) {
+    const x = s.xs[i], y = s.ys[i], z = s.zs[i], st = s.st[i], g = geoms[st], name = names[st];
+    for (const q of g.quads) {
+      if (q.cull) {
+        const nb = at(x + q.cull[0], y + q.cull[1], z + q.cull[2]);
+        if (nb) {
+          const ns = nb - 1;
+          if (occl[ns]) continue;
+          if ((g.fluid || (g.fullCube && !occl[st])) && names[ns] === name) continue;   // Glas an Glas, Wasser an Wasser
+        }
+      }
+      const inf = q.tex && info.get(q.tex);
+      const cls = inf ? inf.cls : (g.trans ? 'trans' : 'opaque');
+      const cell = inf ? inf.cell : 0;
+      let hex;
+      if (inf) { hex = q.tint ? (tintCache.get(name) || tintCache.set(name, tintFor(name)).get(name)) : '#ffffff'; }
+      else hex = baseCache.get(name) || baseCache.set(name, colorFor(name)).get(name);
+      col.set(hex);
+      // Minecraft-typische Flächenhelligkeit
+      const c = q.c, ax = c[1][0] - c[0][0], ay = c[1][1] - c[0][1], az = c[1][2] - c[0][2], bx = c[3][0] - c[0][0], by = c[3][1] - c[0][1], bz = c[3][2] - c[0][2];
+      const nx = by * az - bz * ay, ny = bz * ax - bx * az, nz = bx * ay - by * ax, L = Math.hypot(nx, ny, nz) || 1;
+      const ux = Math.abs(nx / L), uy = ny / L, uz = Math.abs(nz / L);
+      const shade = uy > 0.7 ? 1 : uy < -0.7 ? 0.5 : uz >= ux ? 0.8 : 0.62;
+      const b = B[cls], base = b.n;
+      const [u1, v1, u2, v2] = q.uv, r = ((q.rot / 90) | 0) & 3;
+      const uvs = [[u1, v1], [u2, v1], [u2, v2], [u1, v2]];
+      const ox = (cell % cols) * S, oy = Math.floor(cell / cols) * S;
+      for (let k = 0; k < 4; k++) {
+        const p = c[k];
+        b.pos.push(x + p[0] / 16 - cx, y + p[1] / 16, z + p[2] / 16 - cz);
+        const [u, v] = uvs[(k - r + 4) & 3];
+        const uu = Math.min(16 - E, Math.max(E, u)), vv = Math.min(16 - E, Math.max(E, v));
+        b.uv.push((ox + uu / 16 * S) / W, 1 - (oy + vv / 16 * S) / H);
+        b.col.push(col.r * shade, col.g * shade, col.b * shade);
+      }
+      b.idx.push(base, base + 3, base + 2, base, base + 2, base + 1);
+      b.n += 4;
+    }
+  }
+  const mats = {
+    opaque: () => new THREE.MeshBasicMaterial({ map: prep.tex, vertexColors: true, side: THREE.DoubleSide }),
+    cut: () => new THREE.MeshBasicMaterial({ map: prep.tex, vertexColors: true, side: THREE.DoubleSide, alphaTest: 0.5, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    trans: () => new THREE.MeshBasicMaterial({ map: prep.tex, vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: prep.info.size ? 1 : 0.5, depthWrite: false }),
+  };
+  for (const k of ['opaque', 'cut', 'trans']) {
+    const b = B[k];
+    if (!b.n) continue;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3));
+    geo.setIndex(b.n > 65535 ? new THREE.Uint32BufferAttribute(b.idx, 1) : new THREE.Uint16BufferAttribute(b.idx, 1));
+    const mesh = new THREE.Mesh(geo, mats[k]());
+    if (k === 'trans') mesh.renderOrder = 1;
+    scene.add(mesh); meshes.push(mesh);
+  }
+  if (gridHelper) { scene.remove(gridHelper); gridHelper.geometry.dispose(); gridHelper.material.dispose(); }
+  const gs = Math.ceil(Math.max(X, Z) * 1.4 + 8);
+  gridHelper = new THREE.GridHelper(gs, gs, 0x46536a, 0x2c3445);
+  gridHelper.position.y = -0.002;
+  scene.add(gridHelper);
+  if (fitCamera) fitView();
+  const tl = texSources.length;
+  $('texState').textContent = tl ? 'Texturen: ' + texSources.map(t => t.name).join(', ') : 'Ohne Texturen – oben „Texturen“ einrichten';
+}
+function fitView() {
+  if (!structure || !camera) return;
+  const s = structure.size, r = Math.max(...s);
+  controls.target.set(0, s[1] * 0.4, 0);
+  camera.position.set(r * 1.1, s[1] * 0.4 + r * 0.8, -r * 1.3);
+  camera.far = r * 20 + 200; camera.updateProjectionMatrix();
+}
+
 // ---------- Ebenen ----------
+let layerAxis = 1, layerDir = 'asc', layerSingle = false;
 const DIR_LABELS = { 0: ['von Westen', 'von Osten'], 1: ['von unten', 'von oben'], 2: ['von Norden', 'von Süden'] };
 function setupLayerRange(reset) {
-  const ax = Number($('layerAxis').value), [a, b] = DIR_LABELS[ax];
-  const dirVal = $('layerDir').value || 'asc';
-  $('layerDir').innerHTML = '';
-  $('layerDir').add(new Option(a, 'asc')); $('layerDir').add(new Option(b, 'desc'));
-  $('layerDir').value = dirVal;
+  $('dirLabel').textContent = DIR_LABELS[layerAxis][layerDir === 'asc' ? 0 : 1];
+  document.querySelectorAll('#axisSeg button').forEach(b => b.classList.toggle('on', Number(b.dataset.axis) === layerAxis));
+  $('singleBtn').classList.toggle('on', layerSingle);
   if (!structure) return;
-  const max = structure.size[ax] - 1;
+  const max = structure.size[layerAxis] - 1;
   $('layer').max = max;
-  if (reset) $('layer').value = $('layerSingle').checked ? 0 : ($('layerDir').value === 'asc' ? max : 0);
+  if (reset) $('layer').value = layerSingle ? 0 : (layerDir === 'asc' ? max : 0);
   updateLayerLabel();
 }
 function updateLayerLabel() {
-  const v = Number($('layer').value), ax = 'XYZ'[$('layerAxis').value], max = Number($('layer').max);
-  const single = $('layerSingle').checked, asc = $('layerDir').value === 'asc';
-  $('layerVal').textContent = single ? `${ax} = ${v}` : asc ? `${ax} 0–${v}` : `${ax} ${v}–${max}`;
+  const v = Number($('layer').value), ax = 'XYZ'[layerAxis], max = Number($('layer').max);
+  $('layerVal').textContent = layerSingle ? `${ax} = ${v}` : layerDir === 'asc' ? `${ax} 0 – ${v}` : `${ax} ${v} – ${max}`;
 }
 function layerVisible() {
-  const ax = Number($('layerAxis').value), v = Number($('layer').value);
-  const single = $('layerSingle').checked, asc = $('layerDir').value === 'asc';
-  const arr = structure[['xs', 'ys', 'zs'][ax]];
-  return single ? i => arr[i] === v : asc ? i => arr[i] <= v : i => arr[i] >= v;
+  const v = Number($('layer').value), arr = structure[['xs', 'ys', 'zs'][layerAxis]];
+  return layerSingle ? i => arr[i] === v : layerDir === 'asc' ? i => arr[i] <= v : i => arr[i] >= v;
 }
-for (const id of ['layerAxis', 'layerDir', 'layerSingle']) $(id).addEventListener('change', () => { setupLayerRange(true); renderPreview(false); });
+document.querySelectorAll('#axisSeg button').forEach(b => b.onclick = () => { layerAxis = Number(b.dataset.axis); setupLayerRange(true); renderPreview(false); });
+$('dirBtn').onclick = () => { layerDir = layerDir === 'asc' ? 'desc' : 'asc'; setupLayerRange(true); renderPreview(false); };
+$('singleBtn').onclick = () => { layerSingle = !layerSingle; setupLayerRange(true); renderPreview(false); };
 $('layer').addEventListener('input', () => { updateLayerLabel(); renderPreview(false); });
+$('resetView').onclick = () => { layerAxis = 1; layerDir = 'asc'; layerSingle = false; setupLayerRange(true); renderPreview(false); fitView(); };
 setupLayerRange(true);
 
 // ---------- Blockliste: Anzahl je Block, ausblenden / vom Export ausschließen ----------
 const hiddenView = new Set(), hiddenExport = new Set();
-$('toggleList').onclick = () => { $('blockList').classList.toggle('open'); $('toggleList').classList.toggle('active'); };
+const EYE = '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+const BOX = '<svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-5-5m5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>';
+const BOX_OFF = '<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 1.4-.6M12 3v6"/></svg>';
 function renderBlockList() {
   if (!structure) return;
   const counts = new Map();
@@ -954,13 +1626,22 @@ function renderBlockList() {
   $('blRows').innerHTML = '';
   for (const [n, c] of rows) {
     const row = document.createElement('div');
-    row.className = 'blRow' + (hiddenView.has(n) || hiddenExport.has(n) ? ' off' : '');
-    const short = n.startsWith('minecraft:') ? n.slice(10) : n;
-    row.innerHTML = `<div class="blName" title="${escapeHtml(n)}"><span class="sw" style="background:${colorFor(n)}"></span><span class="n">${escapeHtml(short)}</span><span class="c">${c.toLocaleString('de')}</span></div>`;
-    const view = Object.assign(document.createElement('input'), { type: 'checkbox', checked: !hiddenView.has(n), title: 'In der Vorschau anzeigen' });
-    const exp = Object.assign(document.createElement('input'), { type: 'checkbox', checked: !hiddenExport.has(n), title: 'In die .nbt übernehmen' });
-    view.onchange = () => { view.checked ? hiddenView.delete(n) : hiddenView.add(n); row.classList.toggle('off', hiddenView.has(n) || hiddenExport.has(n)); renderPreview(false); updateListFoot(counts); };
-    exp.onchange = () => { exp.checked ? hiddenExport.delete(n) : hiddenExport.add(n); row.classList.toggle('off', hiddenView.has(n) || hiddenExport.has(n)); updateListFoot(counts); };
+    const off = () => hiddenView.has(n) || hiddenExport.has(n);
+    row.className = 'bl-row' + (off() ? ' off' : '');
+    const short = n.startsWith('minecraft:') ? n.slice(10) : n, th = thumbFor(n);
+    row.innerHTML = `<div class="bl-name" title="${escapeHtml(n)}"><span class="sw" style="${th ? `background-image:url(${th})` : `background:${colorFor(n)}`}"></span><span class="n">${escapeHtml(short.replace(/_/g, ' '))}</span><span class="c">${c.toLocaleString('de')}</span></div>`;
+    const view = document.createElement('button'), exp = document.createElement('button');
+    view.className = exp.className = 'eye';
+    const paint = () => {
+      view.innerHTML = hiddenView.has(n) ? EYE_OFF : EYE; view.classList.toggle('offstate', hiddenView.has(n));
+      view.title = hiddenView.has(n) ? 'Ausgeblendet – klicken zum Anzeigen' : 'Sichtbar – klicken zum Ausblenden';
+      exp.innerHTML = hiddenExport.has(n) ? BOX_OFF : BOX; exp.classList.toggle('offstate', hiddenExport.has(n));
+      exp.title = hiddenExport.has(n) ? 'Wird NICHT exportiert – klicken zum Einschließen' : 'Wird exportiert – klicken zum Ausschließen';
+      row.classList.toggle('off', off());
+    };
+    view.onclick = () => { hiddenView.has(n) ? hiddenView.delete(n) : hiddenView.add(n); paint(); renderPreview(false); updateListFoot(counts); };
+    exp.onclick = () => { hiddenExport.has(n) ? hiddenExport.delete(n) : hiddenExport.add(n); paint(); updateListFoot(counts); };
+    paint();
     row.append(view, exp);
     $('blRows').append(row);
   }
@@ -969,11 +1650,11 @@ function renderBlockList() {
 function updateListFoot(counts) {
   let ex = 0, hv = 0;
   for (const [n, c] of counts) { if (hiddenExport.has(n)) ex += c; if (hiddenView.has(n)) hv += c; }
-  $('blFoot').textContent = `${counts.size} Blocktypen · ${hv.toLocaleString('de')} ausgeblendet · ${ex.toLocaleString('de')} vom Export ausgeschlossen`;
+  $('blFoot').textContent = `${counts.size} Typen` + (hv ? ` · ${hv.toLocaleString('de')} ausgeblendet` : '') + (ex ? ` · ${ex.toLocaleString('de')} nicht exportiert` : '');
   const s = structure.size;
-  $('stats').textContent = `${s[0]}×${s[1]}×${s[2]} · ${structure.count.toLocaleString('de')} Blöcke · ${counts.size} Blocktypen`
+  $('stats').textContent = `${s[0]} × ${s[1]} × ${s[2]} · ${structure.count.toLocaleString('de')} Blöcke`
     + (structure.nbt.size ? ` · ${structure.nbt.size} Block-Entities` : '') + (structure.entities.length ? ` · ${structure.entities.length} Entities` : '')
-    + (ex ? ` · Export ohne ${ex.toLocaleString('de')} Blöcke` : '');
+    + (ex ? ` · Export ohne ${ex.toLocaleString('de')}` : '');
 }
 $('blSearch').addEventListener('input', renderBlockList);
 function setAllVisible(show) {
@@ -993,57 +1674,16 @@ $('download').onclick = async () => {
   a.download = (suggestName($('fileName').value) || 'struktur') + '.nbt';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(`${a.download} heruntergeladen`);
 };
 
-// ---------- Tabs ----------
-$('tab3d').onclick = () => { $('tab3d').classList.add('active'); $('tabCode').classList.remove('active'); $('codeWrap').style.display = 'none'; $('canvasWrap').style.display = ''; };
-$('tabCode').onclick = () => { $('tabCode').classList.add('active'); $('tab3d').classList.remove('active'); $('codeWrap').style.display = 'flex'; $('canvasWrap').style.display = 'none'; };
-
-// ---------- 3D-Vorschau (three.js wird nachgeladen) ----------
-let renderer, scene, camera, controls, meshes = [], grid = null;
-async function initPreview() {
-  try {
-    THREE = await import('three');
-    ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
-  } catch (e) {
-    $('empty').innerHTML = '3D-Vorschau nicht verfügbar: three.js konnte nicht von cdn.jsdelivr.net geladen werden (Blocker? offline?).<br>Laden, Blockliste und .nbt-Export funktionieren trotzdem.';
-    return;
-  }
-  try {
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-  } catch (e) {
-    $('empty').innerHTML = '3D-Vorschau nicht verfügbar: WebGL ist in diesem Browser deaktiviert.<br>Laden, Blockliste und .nbt-Export funktionieren trotzdem.';
-    return;
-  }
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  $('canvasWrap').appendChild(renderer.domElement);
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x9cc4e4);
-  camera = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x556070, 1.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.position.set(0.6, 1, 0.35);
-  scene.add(sun);
-  new ResizeObserver(resize).observe($('view'));
-  resize();
-  (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
-  if (structure) renderPreview(true);
-}
-function resize() {
-  const r = $('view').getBoundingClientRect();
-  renderer.setSize(r.width, r.height, false);
-  renderer.domElement.style.width = r.width + 'px'; renderer.domElement.style.height = r.height + 'px';
-  camera.aspect = r.width / Math.max(r.height, 1); camera.updateProjectionMatrix();
-}
-
+// ---------- Farben für Blöcke ohne Textur ----------
 const DYES = { white: '#e9ecec', orange: '#f07613', magenta: '#bd44b3', light_blue: '#3aafd9', yellow: '#f8c527', lime: '#70b919',
   pink: '#ed8dac', gray: '#3e4447', light_gray: '#8e8e86', cyan: '#158991', purple: '#792aac', blue: '#35399d', brown: '#724728',
   green: '#546d1b', red: '#a12722', black: '#141519' };
 const COLORS = {
   stone: '#7d7d7d', cobblestone: '#7a7a7a', mossy_cobblestone: '#6e7a5e', stone_bricks: '#7a7a7a', mossy_stone_bricks: '#6d7a5f',
-  cracked_stone_bricks: '#757575', chiseled_stone_bricks: '#777', smooth_stone: '#9e9e9e', andesite: '#888889', polished_andesite: '#848786',
+  cracked_stone_bricks: '#757575', chiseled_stone_bricks: '#777777', smooth_stone: '#9e9e9e', andesite: '#888889', polished_andesite: '#848786',
   diorite: '#bcbcbc', polished_diorite: '#c0c0c2', granite: '#956756', polished_granite: '#9a6a59', deepslate: '#505053',
   cobbled_deepslate: '#4d4d50', bricks: '#966153', mud_bricks: '#8a6b51', sandstone: '#d8cb9b', smooth_sandstone: '#dccf9f',
   red_sandstone: '#b5612c', sand: '#dbcf9e', red_sand: '#be6621', gravel: '#837f7e', dirt: '#866043', coarse_dirt: '#77553b',
@@ -1054,7 +1694,7 @@ const COLORS = {
   blackstone: '#2a2328', polished_blackstone_bricks: '#302a30', basalt: '#4c4c51', end_stone: '#dbde9e', purpur_block: '#a97ea9',
   prismarine: '#63a294', dark_prismarine: '#335b4b', terracotta: '#985e43', bookshelf: '#6b5131', hay_block: '#a68b0c',
   glowstone: '#ffda74', sea_lantern: '#acc8be', shroomlight: '#f09347', torch: '#ffd75a', wall_torch: '#ffd75a', lantern: '#ffcf6a',
-  chain: '#3d4250', iron_bars: '#8a8c8c', chest: '#a77e36', barrel: '#7c5a33', crafting_table: '#7d5a37', furnace: '#666',
+  chain: '#3d4250', iron_bars: '#8a8c8c', chest: '#a77e36', barrel: '#7c5a33', crafting_table: '#7d5a37', furnace: '#666666',
   campfire: '#f39b37', calcite: '#dfe0dc', tuff: '#6c6d66', amethyst_block: '#8662bf', moss_block: '#596d2d', dripstone_block: '#866b5c',
   bone_block: '#e1dcc4', pumpkin: '#c67414', melon: '#6f9128', cactus: '#5b8a2b', farmland: '#5a3a20', dirt_path: '#94793f',
   rail: '#8c7c5c', ladder: '#9b7a46', redstone_block: '#af1805', lapis_block: '#1f438c', sponge: '#c3c04a', target: '#e2aa9c',
@@ -1068,42 +1708,34 @@ const COLORS = {
 const WOOD = { oak: '#b8945f', spruce: '#735532', birch: '#c8b77a', jungle: '#a07350', acacia: '#a85a32', dark_oak: '#4c3218',
   mangrove: '#763731', cherry: '#e2b3ac', bamboo: '#c4af52', crimson: '#653147', warped: '#2b6963', pale_oak: '#e3d9d5' };
 const colorCache = new Map();
-function colorFor(name) {
-  let c = colorCache.get(name);
-  if (c) return c;
-  const n = name.split(':')[1] || name;
-  let hex = COLORS[n];
-  if (!hex) {
-    const dye = Object.keys(DYES).sort((a, b) => b.length - a.length).find(k => n.startsWith(k + '_'));
-    if (dye) hex = DYES[dye];
-  }
-  if (!hex) {
-    const wood = Object.keys(WOOD).sort((a, b) => b.length - a.length).find(k => n.includes(k));
-    if (wood) hex = n.includes('log') || n.includes('wood') && !n.includes('stripped') ? shade(WOOD[wood], -0.35) : WOOD[wood];
-    if (n.includes('leaves')) hex = n.includes('cherry') ? '#e8a6c4' : n.includes('azalea') ? '#5f7a2c' : '#4b7a2a';
-  }
-  if (!hex) {
-    const base = Object.keys(COLORS).sort((a, b) => b.length - a.length).find(k => n.includes(k));
-    hex = base ? COLORS[base] : null;
-  }
-  if (!hex) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0; hex = hslHex(h % 360, .35, .55); }
-  colorCache.set(name, hex);
-  return hex;
-}
-// Farb-Hilfen ohne three.js, damit die Blockliste auch ohne 3D-Vorschau funktioniert
 const toHex = rgb => '#' + rgb.map(v => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('');
 function shade(hex, f) { return toHex([1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) * (1 + f))); }
 function hslHex(h, s, l) {
   const a = s * Math.min(l, 1 - l), f = k => { const t = (k + h / 30) % 12; return l - a * Math.max(-1, Math.min(t - 3, 9 - t, 1)); };
   return toHex([f(0), f(8), f(4)].map(v => v * 255));
 }
-const isTransparent = n => /glass|water|ice$|^minecraft:ice/.test(n) && !n.includes('tinted');
-
+function colorFor(name) {
+  let hex = colorCache.get(name);
+  if (hex) return hex;
+  const n = name.split(':')[1] || name;
+  hex = COLORS[n];
+  if (!hex) { const dye = Object.keys(DYES).sort((a, b) => b.length - a.length).find(k => n.startsWith(k + '_')); if (dye) hex = DYES[dye]; }
+  if (!hex) {
+    const wood = Object.keys(WOOD).sort((a, b) => b.length - a.length).find(k => n.includes(k));
+    if (wood) hex = n.includes('log') || n.includes('wood') && !n.includes('stripped') ? shade(WOOD[wood], -0.35) : WOOD[wood];
+    if (n.includes('leaves')) hex = n.includes('cherry') ? '#e8a6c4' : n.includes('azalea') ? '#5f7a2c' : '#4b7a2a';
+  }
+  if (!hex) { const base = Object.keys(COLORS).sort((a, b) => b.length - a.length).find(k => n.includes(k)); hex = base ? COLORS[base] : null; }
+  if (!hex) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0; hex = hslHex(h % 360, .35, .55); }
+  colorCache.set(name, hex);
+  return hex;
+}
+const isTransparent = n => /glass|water|ice$/.test(n) && !n.includes('tinted');
 function piecesFor(name, props) {
   const n = name.split(':')[1] || name;
   const f = props.facing;
   const off = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
-  if (n === 'air' || n.endsWith('_air')) return [];
+  if (INVISIBLE.test(n) || n.endsWith('_air')) return [];
   if (n.endsWith('_slab')) return props.type === 'double' ? [[.5, .5, .5, 1, 1, 1]] : [[.5, props.type === 'top' ? .75 : .25, .5, 1, .5, 1]];
   if (n.endsWith('_stairs')) {
     const top = props.half === 'top', [dx, dz] = off[f] || [0, -1];
@@ -1114,21 +1746,19 @@ function piecesFor(name, props) {
     const post = kind === 'pane' ? .125 : kind === 'fence' ? .25 : .5, arm = kind === 'pane' ? .125 : kind === 'fence' ? .125 : .375;
     const h = kind === 'pane' ? 1 : kind === 'fence' ? .4 : .8, ay = kind === 'fence' ? .6 : h / 2;
     const out = [[.5, .5, .5, post, 1, post]];
-    for (const [d, [dx, dz]] of Object.entries(off)) {
+    for (const [d, [dx, dz]] of Object.entries(off))
       if (props[d] && props[d] !== 'false' && props[d] !== 'none') out.push([.5 + dx * .25, ay, .5 + dz * .25, dx ? .5 : arm, h, dz ? .5 : arm]);
-    }
     return out;
   }
-  if (n.endsWith('_carpet') || n.endsWith('pressure_plate') || n.includes('rail') || n === 'redstone_wire' || n === 'snow' || n.endsWith('moss_carpet'))
-    return [[.5, .03, .5, 1, .06, 1]];
+  if (n.endsWith('_carpet') || n.endsWith('pressure_plate') || n.includes('rail') || n === 'redstone_wire' || n === 'snow') return [[.5, .03, .5, 1, .06, 1]];
   if (n.endsWith('_trapdoor')) {
     if (props.open === 'true') { const [dx, dz] = off[f] || [0, 1]; return [[.5 - dx * .4, .5, .5 - dz * .4, dx ? .19 : 1, 1, dz ? .19 : 1]]; }
     return [[.5, props.half === 'top' ? .9 : .1, .5, 1, .19, 1]];
   }
   if (n.endsWith('_door')) { const [dx, dz] = off[f] || [0, 1]; return [[.5 - dx * .4, .5, .5 - dz * .4, dx ? .19 : 1, 1, dz ? .19 : 1]]; }
   if (n === 'ladder' || n.endsWith('wall_sign') || n.endsWith('wall_banner') || n === 'vine') { const [dx, dz] = off[f] || [0, 1]; return [[.5 - dx * .45, .5, .5 - dz * .45, dx ? .1 : .9, .9, dz ? .1 : .9]]; }
-  if (n.endsWith('torch') || n.endsWith('lantern') && n !== 'sea_lantern' || n.includes('candle') || n.endsWith('button') || n === 'lever'
-    || n.includes('flower') || n.includes('sapling') || n.includes('tulip') || n === 'poppy' || n === 'dandelion' || n.endsWith('_pot') || n === 'flower_pot')
+  if (n.endsWith('torch') || (n.endsWith('lantern') && n !== 'sea_lantern') || n.includes('candle') || n.endsWith('button') || n === 'lever'
+    || n.includes('flower') || n.includes('sapling') || n.includes('tulip') || n === 'poppy' || n === 'dandelion' || n.endsWith('_pot'))
     return [[.5, props.hanging === 'true' ? .6 : .3, .5, .3, .6, .3]];
   if (n === 'chain' || n === 'end_rod' || n === 'lightning_rod') return [[.5, .5, .5, .15, 1, .15]];
   if (n.endsWith('chest')) return [[.5, .44, .5, .875, .875, .875]];
@@ -1139,60 +1769,12 @@ function piecesFor(name, props) {
   return [[.5, .5, .5, 1, 1, 1]];
 }
 
-function renderPreview(fitCamera) {
-  if (!structure || !renderer) return;
-  for (const m of meshes) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
-  meshes = [];
-  const s = structure, inLayer = layerVisible();
-  const shown = s.palette.map(p => !hiddenView.has(p.name));
-  const vis = i => shown[s.st[i]] && inLayer(i);
-  const occ = new Set();
-  const full = s.palette.map(p => { const pc = piecesFor(p.name, p.props); return pc.length === 1 && pc[0][3] === 1 && pc[0][4] === 1 && pc[0][5] === 1 && !isTransparent(p.name); });
-  const K = (x, y, z) => (x * 4096 + y) * 4096 + z;
-  for (let i = 0; i < s.count; i++) if (full[s.st[i]] && vis(i)) occ.add(K(s.xs[i], s.ys[i], s.zs[i]));
-  const pieces = s.palette.map(p => piecesFor(p.name, p.props));
-  const opaque = [], trans = [];
-  for (let i = 0; i < s.count; i++) {
-    const x = s.xs[i], y = s.ys[i], z = s.zs[i], st = s.st[i];
-    if (!vis(i)) continue;
-    if (full[st] && occ.has(K(x + 1, y, z)) && occ.has(K(x - 1, y, z)) && occ.has(K(x, y + 1, z)) && occ.has(K(x, y - 1, z))
-      && occ.has(K(x, y, z + 1)) && occ.has(K(x, y, z - 1))) continue;
-    const t = isTransparent(s.palette[st].name);
-    for (const pc of pieces[st]) (t ? trans : opaque).push(x, y, z, st, pc);
-  }
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-  const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
-  const cx = s.size[0] / 2, cz = s.size[2] / 2, col = new THREE.Color();
-  function makeMesh(list, material) {
-    const n = list.length / 5;
-    if (!n) return;
-    const mesh = new THREE.InstancedMesh(geo.clone(), material, n);
-    for (let j = 0; j < n; j++) {
-      const x = list[5 * j], y = list[5 * j + 1], z = list[5 * j + 2], st = list[5 * j + 3], pc = list[5 * j + 4];
-      v.set(x + pc[0] - cx, y + pc[1], z + pc[2] - cz); sc.set(pc[3], pc[4], pc[5]);
-      mtx.compose(v, q, sc); mesh.setMatrixAt(j, mtx);
-      mesh.setColorAt(j, col.set(colorFor(s.palette[st].name)));
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-    scene.add(mesh); meshes.push(mesh);
-  }
-  makeMesh(opaque, new THREE.MeshLambertMaterial());
-  makeMesh(trans, new THREE.MeshLambertMaterial({ transparent: true, opacity: .45, depthWrite: false }));
-  if (grid) scene.remove(grid);
-  const gs = Math.ceil(Math.max(s.size[0], s.size[2]) * 1.4 + 8);
-  grid = new THREE.GridHelper(gs, gs, 0x5a7a5a, 0x7a9a7a);
-  grid.position.y = -0.001;
-  scene.add(grid);
-  if (fitCamera) {
-    const r = Math.max(...s.size);
-    controls.target.set(0, s.size[1] * 0.4, 0);
-    camera.position.set(r * 1.1, s.size[1] * 0.4 + r * 0.8, -r * 1.3);
-    camera.far = r * 20 + 100; camera.updateProjectionMatrix();
-  }
-}
+// ---------- Start ----------
+updateKeyDot();
 updateEstimate();
 updateSessionCost();
 window.__appReady = true;
+idb.loadAll(assets).then(assetsChanged).catch(() => {});
 initPreview();
 </script>
 <script>
@@ -1202,9 +1784,7 @@ addEventListener('dragover', e => { if (!window.__appReady) e.preventDefault(); 
 addEventListener('drop', e => { if (!window.__appReady) e.preventDefault(); });
 addEventListener('load', () => setTimeout(() => {
   if (window.__appReady) return;
-  const box = document.getElementById('statusBox');
-  box.style.display = '';
-  document.getElementById('status').innerHTML = '<span class="err">Die Seite konnte nicht gestartet werden. Bitte einen aktuellen Browser (Firefox, Chrome, Edge) verwenden und die Konsole (F12) auf Fehler prüfen.</span>';
+  document.getElementById('emptyText').innerHTML = '<span style="color:#ef6b5b">Die Seite konnte nicht gestartet werden. Bitte einen aktuellen Browser (Firefox, Chrome, Edge) verwenden und die Konsole (F12) auf Fehler prüfen.</span>';
 }, 1500));
 </script>
 </body>

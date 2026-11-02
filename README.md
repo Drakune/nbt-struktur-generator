@@ -9,13 +9,25 @@ Oder `index.html` herunterladen und per Doppelklick öffnen. Installation oder S
 ## Funktionen
 
 - **Eigene Entwürfe statt Vorlagen**: Claude schreibt für jede Anfrage eigenen Bau-Code. Der läuft abgeschottet im Browser (Web Worker, ohne Zugriff auf Seite oder API-Key).
-- **Modellauswahl mit Kosten**: Claude Opus 5.5, Sonnet 5.5, Haiku 5.5 und Fable 5.1, dazu ein einstellbarer Denk-Aufwand. Vor dem Senden siehst du eine Kostenschätzung, danach die echten Kosten laut Token-Verbrauch und die Summe aller Anfragen.
+- **Echte Minecraft-Texturen und -Modelle** in der 3D-Vorschau: Treppen, Zäune, Scheiben, Pflanzen usw. sehen aus wie im Spiel (siehe unten).
+- **Modellauswahl mit Kosten**: Claude Opus 5.5, Sonnet 5.5, Haiku 5.5 und Fable 5.1, dazu eine einstellbare Gründlichkeit. Vor dem Senden siehst du eine Kostenschätzung, danach die echten Kosten laut Token-Verbrauch und die Summe aller Anfragen.
 - **Nachbessern im Dialog**: Änderungswünsche wie „Dach steiler, mehr Fenster“ überarbeiten den Entwurf. Fehler im Bau-Code kann Claude auf Knopfdruck selbst beheben.
-- **Vorhandene `.nbt` laden** (Drag & Drop oder „.nbt öffnen“): ansehen, filtern, wieder exportieren oder von Claude umbauen und erweitern lassen. Block-Entity-Daten (Kisteninhalte, Create-Daten) und Entities bleiben erhalten, auch bei Mod-Blöcken.
-- **Ebenen**: Achse (Y/X/Z), Richtung (von unten/oben, Westen/Osten, Norden/Süden) und Modus „nur eine Ebene“.
-- **Blockliste**: Anzahl je Blocktyp. Jeder Typ lässt sich in der Vorschau ausblenden oder vom Export ausschließen.
+- **Vorhandene `.nbt` laden** (Drag & Drop oder „Öffnen“): ansehen, filtern, wieder exportieren oder von Claude umbauen und erweitern lassen. Block-Entity-Daten (Kisteninhalte, Create-Daten) und Entities bleiben erhalten, auch bei Mod-Blöcken.
+- **Ebenen**: Achse (Y/X/Z), Richtung (von unten/oben, Westen/Osten, Norden/Süden) und Modus „einzeln“.
+- **Blockliste**: Anzahl je Blocktyp mit Textur-Vorschau. Jeder Typ lässt sich in der Vorschau ausblenden oder vom Export ausschließen.
+- **Aufgeräumte Oberfläche**: Beide Seitenleisten lassen sich ein- und ausklappen. API-Key und Kosten stehen in den Einstellungen.
 - **Code-Ansicht**: Den Bau-Code selbst bearbeiten und lokal neu ausführen, das kostet nichts.
-- Minecraft Java 1.20.1, 1.20.4, 1.21.1, 1.21.4 (die DataVersion wird passend gesetzt).
+- **Alle Java-Versionen von 1.16 bis 26.3** (die DataVersion wird passend gesetzt).
+
+## Texturen
+
+Die Minecraft-Texturen gehören Mojang und sind deshalb **nicht** im Repo enthalten. Die Seite liest sie stattdessen einmalig aus deiner eigenen Minecraft-JAR („Texturen“ → JAR auswählen oder auf die Seite ziehen). Sie werden nur lokal im Browser gespeichert (IndexedDB) und nirgendwohin hochgeladen.
+
+- Prism Launcher: `…/PrismLauncher/libraries/com/mojang/minecraft/<Version>/minecraft-<Version>-client.jar`
+- Offizieller Launcher: `.minecraft/versions/<Version>/<Version>.jar`
+- Für Mod-Blöcke kannst du zusätzlich die **Mod-JAR** laden (z. B. Create), für einen anderen Look ein **Ressourcenpaket** (.zip).
+
+Blöcke ohne eigenes Modell (Truhen, Betten, Schilder) werden als vereinfachte Form mit ihrer Textur dargestellt, unbekannte Blöcke als farbige Würfel.
 
 ## API-Key und Kosten
 
@@ -32,7 +44,7 @@ Du brauchst einen eigenen Claude-API-Key von [console.anthropic.com](https://con
 
 ## Technik
 
-Eine einzige HTML-Datei ohne Build-Schritt. Bibliotheken kommen per CDN: [Anthropic TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) über esm.sh und [three.js](https://threejs.org) über jsDelivr. NBT lesen und schreiben, gzip und Vorschau laufen komplett im Browser.
+Eine einzige HTML-Datei ohne Build-Schritt. Bibliotheken kommen per CDN: [Anthropic TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) über esm.sh und [three.js](https://threejs.org) über jsDelivr. NBT lesen und schreiben, gzip, JAR-Entpacken, Minecraft-Modelle und Vorschau laufen komplett im Browser.
 
 ## Lizenz
 
