@@ -323,19 +323,25 @@
 <dialog id="texDlg">
   <div class="dlg-head">Minecraft-Texturen<div class="spacer"></div><button class="icon-btn" data-close title="Schließen"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
   <div class="dlg-body">
-    <p>Die Vorschau kann Blöcke mit ihren echten Modellen und Texturen zeigen. Die Texturen gehören Mojang und werden deshalb nicht mitgeliefert – die Seite liest sie <b>einmalig aus deiner eigenen Minecraft-JAR</b> und speichert sie nur lokal in deinem Browser.</p>
-    <div class="dropzone" id="texDrop">
-      <div style="margin-bottom:10px">Minecraft-JAR hier ablegen oder</div>
-      <button class="btn primary" id="texPick">Datei auswählen …</button>
-      <input id="texInput" type="file" accept=".jar,.zip" multiple hidden>
+    <p>Die Vorschau zeigt Blöcke mit ihren echten Modellen und Texturen. Sie werden direkt von den offiziellen Servern geladen – Minecraft von <b>Mojang</b>, Create von <b>Modrinth</b> – und nur lokal in deinem Browser gespeichert. Nichts davon liegt im Repo.</p>
+    <div class="card" style="margin:0">
+      <div class="grid2">
+        <div><label class="label" for="texVersion">Minecraft-Version</label><select id="texVersion"></select></div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:10px"><label class="check"><input type="checkbox" id="texCreate">Create dazu laden</label></div>
+      </div>
+      <button class="btn primary" id="texAuto" style="width:100%;margin-top:10px"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-5-5m5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>Texturen herunterladen</button>
+      <label class="check" style="margin-top:10px"><input type="checkbox" id="texAutoOn">Automatisch laden, sobald eine Struktur angezeigt wird</label>
       <div class="hint" id="texProgress"></div>
     </div>
-    <div>
-      <div class="label">Wo liegt die JAR?</div>
-      <p><b>Prism Launcher (Flatpak):</b> <code>~/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/libraries/com/mojang/minecraft/&lt;Version&gt;/minecraft-&lt;Version&gt;-client.jar</code></p>
-      <p style="margin-top:6px"><b>Offizieller Launcher:</b> <code>.minecraft/versions/&lt;Version&gt;/&lt;Version&gt;.jar</code></p>
-      <p style="margin-top:6px">Zusätzlich gehen <b>Mod-JARs</b> (z. B. Create) für deren Blöcke und <b>Ressourcenpakete</b> (.zip). Später geladene Dateien überschreiben frühere.</p>
-    </div>
+    <details>
+      <summary class="muted" style="cursor:pointer;font-size:13px">Eigene JAR oder Ressourcenpaket verwenden</summary>
+      <div class="dropzone" id="texDrop" style="margin-top:10px">
+        <div style="margin-bottom:10px">Minecraft-, Mod-JAR oder Ressourcenpaket (.zip) hier ablegen oder</div>
+        <button class="btn" id="texPick">Datei auswählen …</button>
+        <input id="texInput" type="file" accept=".jar,.zip" multiple hidden>
+      </div>
+      <p style="margin-top:8px">Später geladene Dateien überschreiben frühere – so kannst du z. B. ein Ressourcenpaket über die Standard-Texturen legen.</p>
+    </details>
     <div class="sources" id="texSources"></div>
     <div style="display:flex;justify-content:flex-end"><button class="btn ghost small" id="texClear">Alle Texturen entfernen</button></div>
   </div>
@@ -852,7 +858,11 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab
 document.querySelectorAll('dialog [data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
 document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
 $('openSettings').onclick = () => $('settingsDlg').showModal();
-$('openTextures').onclick = $('emptyTex').onclick = () => $('texDlg').showModal();
+$('openTextures').onclick = $('emptyTex').onclick = () => {
+  $('texVersion').value = mojangVersion();
+  $('texCreate').checked = hasCreate() || !!structure?.names.some(n => n.startsWith('create:'));
+  $('texDlg').showModal();
+};
 
 // ---------- Einstellungen ----------
 for (const [id, m] of Object.entries(MODELS)) $('model').add(new Option(`${m.label} · $${m.in} / $${m.out}`, id));
@@ -1054,6 +1064,7 @@ async function showStructure(s) {
   await prepareRender();
   renderBlockList();
   renderPreview(true);
+  autoTextures();
 }
 
 // ---------- Dateien: .nbt öffnen, JAR/ZIP als Texturen, Drag & Drop ----------
@@ -1168,30 +1179,110 @@ async function inflate(e) {
   return new Uint8Array(await new Response(new Blob([e.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
 }
 const ASSET_RE = /^assets\/([a-z0-9_.\-]+)\/(blockstates\/[^\s]+\.json|models\/block\/[^\s]+\.json|textures\/block\/[^\s]+\.png)$/;
-async function importPack(file) {
-  if (!$('texDlg').open) $('texDlg').showModal();
-  $('texProgress').innerHTML = `<span class="spinner"></span>Lese ${escapeHtml(file.name)} …`;
+function texProgress(html) {
+  $('texProgress').innerHTML = html;
+  if (structure) $('texState').innerHTML = html;
+}
+async function importPack(file, name = file.name, meta = {}, quiet = false) {
+  if (!quiet && !$('texDlg').open) $('texDlg').showModal();
+  texProgress(`<span class="spinner"></span>Lese ${escapeHtml(name)} …`);
   try {
-    const entries = await readZip(file, name => { const m = ASSET_RE.exec(name); return m ? m[1] + '/' + m[2] : null; });
+    const entries = await readZip(file, n => { const m = ASSET_RE.exec(n); return m ? m[1] + '/' + m[2] : null; });
     if (!entries.length) throw new Error('keine Block-Modelle oder -Texturen gefunden');
     const dec = new TextDecoder(), result = [];
     for (let i = 0; i < entries.length; i += 64) {
       const chunk = entries.slice(i, i + 64);
       const data = await Promise.all(chunk.map(inflate));
       chunk.forEach((e, j) => result.push([e.key, e.key.endsWith('.png') ? new Blob([data[j]], { type: 'image/png' }) : dec.decode(data[j])]));
-      $('texProgress').innerHTML = `<span class="spinner"></span>Entpacke ${escapeHtml(file.name)} … ${Math.round((i + chunk.length) / entries.length * 100)} %`;
+      texProgress(`<span class="spinner"></span>Entpacke ${escapeHtml(name)} … ${Math.round((i + chunk.length) / entries.length * 100)} %`);
     }
-    texSources = texSources.filter(s => s.name !== file.name).concat({ name: file.name, count: result.length });
+    texSources = texSources.filter(s => s.name !== name && !(meta.kind && s.kind === meta.kind)).concat({ name, count: result.length, ...meta });
     result.push(['__sources', JSON.stringify(texSources)]);
     for (const [k, v] of result) assets.set(k, v);
     try { await idb.putMany(result); } catch { toast('Texturen konnten nicht dauerhaft gespeichert werden (privates Fenster?). Sie gelten nur bis zum Neuladen.', 'err'); }
-    $('texProgress').innerHTML = `<span class="ok">${escapeHtml(file.name)}: ${result.length - 1} Dateien übernommen.</span>`;
-    toast(`Texturen aus ${file.name} geladen`);
+    $('texProgress').innerHTML = `<span class="ok">${escapeHtml(name)}: ${result.length - 1} Dateien übernommen.</span>`;
+    toast(`Texturen geladen: ${name}`);
     await assetsChanged();
+    return true;
   } catch (e) {
-    $('texProgress').innerHTML = `<span class="err">${escapeHtml(file.name)}: ${escapeHtml(e.message || e)}</span>`;
+    texProgress(`<span class="err">${escapeHtml(name)}: ${escapeHtml(e.message || e)}</span>`);
+    return false;
   }
 }
+
+// Direkt von den offiziellen Servern laden (beide erlauben CORS): Mojang für Vanilla, Modrinth für Create
+async function downloadBlob(url, label) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${label}: HTTP ${r.status}`);
+  const total = Number(r.headers.get('content-length')) || 0, reader = r.body.getReader(), parts = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value); got += value.length;
+    texProgress(`<span class="spinner"></span>Lade ${escapeHtml(label)} … ${total ? Math.round(got / total * 100) + ' %' : (got / 1e6).toFixed(1) + ' MB'}`);
+  }
+  return new Blob(parts);
+}
+function mojangVersion(v = $('version').value) {
+  if (v !== 'orig') return v;
+  const dv = VERSIONS.orig.dv;
+  return Object.keys(VERSIONS).find(k => k !== 'orig' && VERSIONS[k].dv <= dv) || '1.21.1';
+}
+async function loadVanilla(ver, quiet) {
+  texProgress(`<span class="spinner"></span>Suche Minecraft ${escapeHtml(ver)} bei Mojang …`);
+  const man = await (await fetch('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json')).json();
+  const v = man.versions.find(x => x.id === ver);
+  if (!v) throw new Error(`Version ${ver} gibt es bei Mojang nicht`);
+  const client = (await (await fetch(v.url)).json()).downloads.client;
+  const blob = await downloadBlob(client.url, `Minecraft ${ver} (${(client.size / 1e6).toFixed(0)} MB)`);
+  return importPack(blob, `Minecraft ${ver} · Mojang`, { kind: 'vanilla', version: ver }, quiet);
+}
+async function loadCreate(ver, quiet) {
+  texProgress(`<span class="spinner"></span>Suche Create für ${escapeHtml(ver)} bei Modrinth …`);
+  let list = [];
+  for (const proj of ['create', 'create-fabric']) {
+    const r = await fetch(`https://api.modrinth.com/v2/project/${proj}/version?game_versions=${encodeURIComponent(JSON.stringify([ver]))}`);
+    if (r.ok) list = await r.json();
+    if (list.length) break;
+  }
+  const v = list.find(x => x.loaders.some(l => l === 'neoforge' || l === 'forge')) || list[0];
+  if (!v) throw new Error(`Create gibt es für Minecraft ${ver} nicht`);
+  const f = v.files.find(x => x.primary) || v.files[0];
+  const blob = await downloadBlob(f.url, `Create ${v.version_number} (${(f.size / 1e6).toFixed(0)} MB)`);
+  return importPack(blob, `Create ${v.version_number} · Modrinth`, { kind: 'create', version: ver }, quiet);
+}
+const hasVanilla = () => texSources.some(s => s.kind === 'vanilla' || /^minecraft/i.test(s.name));
+const hasCreate = () => texSources.some(s => s.kind === 'create' || /^create[-\s]/i.test(s.name));
+let autoRunning = false;
+async function autoTextures() {
+  if (autoRunning || store.get('nbtgen.autoTex') === '0') return;
+  autoRunning = true;
+  try {
+    await assetsReady;
+    const ver = mojangVersion();
+    if (!hasVanilla()) await loadVanilla(ver, true);
+    if (structure?.names.some(n => n.startsWith('create:')) && !hasCreate()) await loadCreate(ver, true);
+  } catch (e) {
+    texProgress(`<span class="err">${escapeHtml(e.message || e)}</span>`);
+    toast('Texturen konnten nicht automatisch geladen werden: ' + (e.message || e), 'err');
+  } finally {
+    autoRunning = false;
+    if (structure && !/err/.test($('texState').innerHTML)) updateTexState();
+  }
+}
+for (const [id, v] of Object.entries(VERSIONS)) $('texVersion').add(new Option(v.label.replace('Java ', ''), id));
+$('texAutoOn').checked = store.get('nbtgen.autoTex') !== '0';
+$('texAutoOn').onchange = () => store.set('nbtgen.autoTex', $('texAutoOn').checked ? '1' : '0');
+$('texAuto').onclick = async () => {
+  $('texAuto').disabled = true;
+  try {
+    const ver = $('texVersion').value;
+    await loadVanilla(ver, false);
+    if ($('texCreate').checked) await loadCreate(ver, false);
+  } catch (e) { texProgress(`<span class="err">${escapeHtml(e.message || e)}</span>`); }
+  finally { $('texAuto').disabled = false; }
+};
 async function assetsChanged() {
   jsonCache.clear(); modelCache.clear(); geomCache.clear();
   try { texSources = JSON.parse(assets.get('__sources') || '[]'); } catch { texSources = []; }
@@ -1202,7 +1293,7 @@ async function assetsChanged() {
   if (structure) { await prepareRender(); renderBlockList(); renderPreview(false); }
 }
 $('texPick').onclick = () => $('texInput').click();
-$('texInput').onchange = () => { for (const f of $('texInput').files) importPack(f); $('texInput').value = ''; };
+$('texInput').onchange = async () => { for (const f of [...$('texInput').files]) await importPack(f); $('texInput').value = ''; };
 $('texClear').onclick = async () => {
   assets.clear();
   try { await idb.clear(); } catch {}
@@ -1572,8 +1663,10 @@ function renderPreview(fitCamera) {
   gridHelper.position.y = -0.002;
   scene.add(gridHelper);
   if (fitCamera) fitView();
-  const tl = texSources.length;
-  $('texState').textContent = tl ? 'Texturen: ' + texSources.map(t => t.name).join(', ') : 'Ohne Texturen – oben „Texturen“ einrichten';
+  if (!autoRunning) updateTexState();
+}
+function updateTexState() {
+  $('texState').textContent = texSources.length ? 'Texturen: ' + texSources.map(t => t.name).join(', ') : 'Ohne Texturen – oben „Texturen“ einrichten';
 }
 function fitView() {
   if (!structure || !camera) return;
@@ -1774,7 +1867,7 @@ updateKeyDot();
 updateEstimate();
 updateSessionCost();
 window.__appReady = true;
-idb.loadAll(assets).then(assetsChanged).catch(() => {});
+const assetsReady = idb.loadAll(assets).then(assetsChanged).catch(() => {});
 initPreview();
 </script>
 <script>

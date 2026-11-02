@@ -21,13 +21,14 @@ Oder `index.html` herunterladen und per Doppelklick öffnen. Installation oder S
 
 ## Texturen
 
-Die Minecraft-Texturen gehören Mojang und sind deshalb **nicht** im Repo enthalten. Die Seite liest sie stattdessen einmalig aus deiner eigenen Minecraft-JAR („Texturen“ → JAR auswählen oder auf die Seite ziehen). Sie werden nur lokal im Browser gespeichert (IndexedDB) und nirgendwohin hochgeladen.
+Die Texturen werden **automatisch** geladen, sobald eine Struktur angezeigt wird. Die Seite holt sie direkt von den offiziellen Servern:
 
-- Prism Launcher: `…/PrismLauncher/libraries/com/mojang/minecraft/<Version>/minecraft-<Version>-client.jar`
-- Offizieller Launcher: `.minecraft/versions/<Version>/<Version>.jar`
-- Für Mod-Blöcke kannst du zusätzlich die **Mod-JAR** laden (z. B. Create), für einen anderen Look ein **Ressourcenpaket** (.zip).
+- **Minecraft** von Mojang (`piston-data.mojang.com`, dieselbe Quelle wie jeder Launcher, ca. 25–30 MB), passend zur eingestellten Version
+- **Create** von Modrinth (`cdn.modrinth.com`), sobald die Struktur `create:`-Blöcke enthält
 
-Blöcke ohne eigenes Modell (Truhen, Betten, Schilder) werden als vereinfachte Form mit ihrer Textur dargestellt, unbekannte Blöcke als farbige Würfel.
+Danach liegen sie nur lokal im Browser (IndexedDB), der Download passiert also nur einmal. Im Repo liegt nichts davon, denn die Minecraft-Texturen gehören Mojang. Unter „Texturen“ kannst du eine andere Version laden, das automatische Laden abschalten oder eigene JARs und Ressourcenpakete (.zip) verwenden, zum Beispiel weitere Mod-JARs.
+
+Blöcke ohne eigenes Modell (Truhen, Betten, Schilder) werden als vereinfachte Form mit ihrer Textur dargestellt, Blöcke ohne geladene Texturen als farbige Würfel.
 
 ## API-Key und Kosten
 
