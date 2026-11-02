@@ -1,0 +1,1167 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NBT Struktur-Generator</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1d2026; --panel2: #252932; --line: #333845;
+    --text: #e6e8ec; --muted: #9aa1ad; --accent: #6fbf5a; --accent2: #4f9a3d;
+    --warn: #e0a84a; --err: #e06a5a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .app { display: grid; grid-template-columns: 400px 1fr; height: 100vh; }
+  aside { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: 16px; }
+  main { position: relative; display: flex; flex-direction: column; min-width: 0; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input[type=text], input[type=password], select, textarea {
+    width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px; font: inherit; }
+  textarea { resize: vertical; min-height: 90px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 8px 12px; font: inherit; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--muted); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: var(--accent2); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; padding: 10px; margin-top: 12px; }
+  .box { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-top: 12px; font-size: 12px; }
+  .box h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .cost b { color: var(--text); }
+  .muted { color: var(--muted); }
+  .warn { color: var(--warn); }
+  .err { color: var(--err); white-space: pre-wrap; }
+  .ok { color: var(--accent); }
+  #thinking { max-height: 120px; overflow-y: auto; white-space: pre-wrap; color: var(--muted); font-size: 11px; }
+  #desc { white-space: pre-wrap; }
+  .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  .toolbar .grow { flex: 1; }
+  .tabs button.active { border-color: var(--accent); }
+  #view { flex: 1; position: relative; min-height: 0; }
+  #canvasWrap, #codeWrap { position: absolute; inset: 0; }
+  #codeWrap { display: none; flex-direction: column; padding: 12px; gap: 8px; }
+  #code { flex: 1; font: 12px/1.4 ui-monospace, Consolas, monospace; min-height: 0; resize: none; }
+  #empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 24px; pointer-events: none; }
+  #layerWrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  #layerWrap select { width: auto; padding: 4px 6px; }
+  #layerVal { min-width: 2.5em; }
+  #statsBar { padding: 4px 12px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--panel); min-height: 24px; }
+  #blockList { position: absolute; top: 0; right: 0; bottom: 0; width: 300px; background: var(--panel); border-left: 1px solid var(--line);
+    display: none; flex-direction: column; z-index: 2; }
+  #blockList.open { display: flex; }
+  .blHead { padding: 8px; border-bottom: 1px solid var(--line); }
+  .blBtns { display: flex; gap: 6px; margin-top: 6px; }
+  .blBtns button { flex: 1; padding: 4px; font-size: 12px; }
+  .blCols, .blRow { display: grid; grid-template-columns: 1fr 48px 48px; align-items: center; gap: 4px; font-size: 12px; }
+  .blCols { margin-top: 8px; color: var(--muted); }
+  .blCols span:not(:first-child), .blRow input { justify-self: center; }
+  #blRows { overflow-y: auto; flex: 1; padding: 4px 8px; }
+  .blRow { padding: 3px 0; border-bottom: 1px solid #262a32; }
+  .blName { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .blName span.n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .blName span.c { color: var(--muted); margin-left: auto; }
+  .sw { width: 12px; height: 12px; border-radius: 2px; flex: none; border: 1px solid #0006; }
+  .blRow.off .n { color: var(--muted); text-decoration: line-through; }
+  #blFoot { padding: 6px 8px; font-size: 11px; border-top: 1px solid var(--line); }
+  #dropOverlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 20px; font-weight: 600;
+    background: #6fbf5a33; border: 3px dashed var(--accent); z-index: 5; pointer-events: none; }
+  body.dragging #dropOverlay { display: flex; }
+  @media (max-width: 860px) { #blockList { width: 100%; } }
+  a { color: var(--accent); }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; height: auto; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    main { height: 80vh; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+  "@anthropic-ai/sdk": "https://esm.sh/@anthropic-ai/sdk@1.3.0"
+} }
+</script>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>NBT Struktur-Generator</h1>
+    <div class="sub">Beschreibe ein Bauwerk – Claude entwirft es einzigartig, du lädst es als <code>.nbt</code> herunter (Create-Schematic / Strukturblock).</div>
+
+    <label for="apiKey">Claude API-Key</label>
+    <input id="apiKey" type="password" placeholder="sk-ant-..." autocomplete="off">
+    <div class="check"><input id="rememberKey" type="checkbox"><label for="rememberKey" style="margin:0">Key in diesem Browser speichern</label></div>
+    <div class="muted" style="font-size:11px;margin-top:4px">Der Key geht nur direkt an api.anthropic.com. Key erstellen: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a></div>
+
+    <label for="model">Modell <span class="muted">(Preis je 1 Mio. Tokens: Eingabe / Ausgabe)</span></label>
+    <select id="model"></select>
+    <div class="row">
+      <div>
+        <label for="effort">Aufwand</label>
+        <select id="effort">
+          <option value="low">niedrig</option>
+          <option value="medium" selected>mittel</option>
+          <option value="high">hoch</option>
+          <option value="xhigh">sehr hoch</option>
+          <option value="max">maximal</option>
+        </select>
+      </div>
+      <div>
+        <label for="version">Minecraft-Version</label>
+        <select id="version"></select>
+      </div>
+    </div>
+    <div>
+        <label for="size">Größe</label>
+        <select id="size">
+          <option value="small">klein (bis ~16)</option>
+          <option value="medium" selected>mittel (bis ~32)</option>
+          <option value="large">groß (bis ~64)</option>
+          <option value="huge">sehr groß (bis ~128)</option>
+          <option value="free">frei / laut Beschreibung</option>
+        </select>
+    </div>
+
+    <div class="box" id="baseBox" style="display:none">
+      <h3>Geladene Datei</h3>
+      <div id="baseInfo"></div>
+      <div class="check"><input id="useBase" type="checkbox" checked><label for="useBase" style="margin:0">Als Ausgangspunkt verwenden (Claude baut sie um / erweitert sie)</label></div>
+      <button id="removeBase" style="margin-top:8px">Datei entfernen</button>
+    </div>
+
+    <label for="prompt">Was soll gebaut werden?</label>
+    <textarea id="prompt" placeholder="z. B. Eine verwinkelte Fischerhütte auf Stelzen aus Fichtenholz, mit Steg, Bootsanleger, Laternen und einem kleinen Räucherschuppen"></textarea>
+
+    <div class="box cost" id="estimate"></div>
+    <button class="primary" id="generate">Struktur generieren</button>
+
+    <div class="box" id="statusBox" style="display:none">
+      <h3>Status</h3>
+      <div id="status"></div>
+      <div id="thinking"></div>
+      <button id="abort" style="margin-top:8px;display:none">Abbrechen</button>
+    </div>
+
+    <div class="box" id="resultBox" style="display:none">
+      <h3>Entwurf</h3>
+      <div id="desc"></div>
+      <div id="lastCost" class="cost" style="margin-top:8px"></div>
+    </div>
+
+    <div id="refineBox" style="display:none">
+      <label for="refine">Änderungswunsch</label>
+      <textarea id="refine" placeholder="z. B. Dach steiler, mehr Fenster, Innenraum mit Bibliothek"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="refineBtn">Änderung anwenden</button>
+        <button id="newBtn">Neue Struktur</button>
+      </div>
+      <button id="fixBtn" style="display:none;width:100%;margin-top:8px">Fehler von Claude beheben lassen</button>
+    </div>
+
+    <div class="box cost" id="sessionCost"></div>
+    <div class="muted" style="font-size:11px;margin-top:10px">Kosten werden aus den Token-Zahlen der API berechnet (Listenpreise, ohne Gewähr). Abgerechnet wird über dein Anthropic-Konto.</div>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <div class="tabs">
+        <button id="tab3d" class="active">3D-Vorschau</button>
+        <button id="tabCode">Code</button>
+      </div>
+      <div id="layerWrap">
+        Ebenen
+        <select id="layerAxis" title="Achse der Ebenen">
+          <option value="1">Y (Höhe)</option>
+          <option value="0">X (West–Ost)</option>
+          <option value="2">Z (Nord–Süd)</option>
+        </select>
+        <select id="layerDir" title="Richtung"></select>
+        <label class="check" style="margin:0"><input id="layerSingle" type="checkbox">nur eine</label>
+        <input id="layer" type="range" min="0" max="0" value="0" disabled>
+        <span id="layerVal">–</span>
+      </div>
+      <div class="grow"></div>
+      <button id="openFile" title="Oder einfach eine .nbt-Datei auf die Seite ziehen">.nbt öffnen</button>
+      <input id="fileInput" type="file" accept=".nbt" hidden>
+      <button id="toggleList">Blockliste</button>
+      <input id="fileName" type="text" style="width:160px" value="struktur">
+      <button id="download" disabled>.nbt herunterladen</button>
+    </div>
+    <div id="statsBar"><span id="stats"></span></div>
+    <div id="view">
+      <div id="canvasWrap"></div>
+      <div id="empty">Noch keine Struktur.<br>Links beschreiben und generieren – oder eine vorhandene <code>.nbt</code> hierher ziehen.</div>
+      <div id="blockList">
+        <div class="blHead">
+          <input id="blSearch" type="text" placeholder="Block suchen …">
+          <div class="blBtns">
+            <button id="blShowAll">alle zeigen</button><button id="blHideAll">alle ausblenden</button>
+          </div>
+          <div class="blCols"><span>Block</span><span title="In der Vorschau anzeigen">Ansicht</span><span title="In die .nbt-Datei übernehmen">Export</span></div>
+        </div>
+        <div id="blRows"></div>
+        <div id="blFoot" class="muted"></div>
+      </div>
+      <div id="dropOverlay">.nbt-Datei hier ablegen</div>
+      <div id="codeWrap">
+        <div class="muted" style="font-size:12px">Der Bau-Code, den Claude geschrieben hat. Du kannst ihn bearbeiten und lokal neu ausführen – das kostet nichts.</div>
+        <textarea id="code" spellcheck="false"></textarea>
+        <div><button id="runCode">Code ausführen</button> <span id="runMsg" class="muted"></span></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// <core> — ohne DOM, wird auch in Tests geladen
+const MODELS = {
+  'claude-opus-5-5':   { label: 'Claude Opus 5.5 (empfohlen)', in: 4,    out: 20,   cacheRead: 0.20, fallbacks: true },
+  'claude-sonnet-5-5': { label: 'Claude Sonnet 5.5',           in: 2,    out: 10,   cacheRead: 0.20, fallbacks: true },
+  'claude-haiku-5-5':  { label: 'Claude Haiku 5.5 (günstig)',  in: 0.10, out: 0.50, cacheRead: 0.01, fallbacks: false },
+  'claude-fable-5-1':  { label: 'Claude Fable 5.1 (stärkstes)', in: 10,  out: 50,   cacheRead: 0.25, fallbacks: true },
+};
+// Grobe Spanne der Ausgabe-Tokens (inkl. Denken) je Aufwandsstufe
+const EFFORT_OUT = { low: [3000, 10000], medium: [6000, 20000], high: [10000, 35000], xhigh: [15000, 50000], max: [20000, 64000] };
+const VERSIONS = {
+  '1.21.4': { dv: 4189, label: 'Java 1.21.4' },
+  '1.21.1': { dv: 3955, label: 'Java 1.21.1' },
+  '1.20.4': { dv: 3700, label: 'Java 1.20.4' },
+  '1.20.1': { dv: 3465, label: 'Java 1.20.1' },
+};
+const SIZE_HINT = {
+  small: 'Keep the build within about 16x16 footprint (height as appropriate).',
+  medium: 'Keep the build within about 32x32 footprint (height as appropriate).',
+  large: 'The build may use up to about 64x64 footprint.',
+  huge: 'The build may use up to about 128x128 footprint.',
+  free: 'Choose a size that fits the description.',
+};
+const BLOCK_LIMIT = 2000000;
+
+function usageCost(usage, modelId) {
+  // Bei Fallbacks liefert die API die einzelnen Versuche in usage.iterations
+  const parts = Array.isArray(usage?.iterations) && usage.iterations.length ? usage.iterations : [usage || {}];
+  let total = 0;
+  for (const u of parts) {
+    const m = MODELS[u.model] || MODELS[modelId];
+    total += ((u.input_tokens || 0) * m.in + (u.cache_creation_input_tokens || 0) * m.in * 1.25
+      + (u.cache_read_input_tokens || 0) * m.cacheRead + (u.output_tokens || 0) * m.out) / 1e6;
+  }
+  return total;
+}
+
+// Läuft im Web Worker: stellt Claude die Bau-Funktionen bereit
+function createBuilder(limit, base) {
+  const blocks = new Map();
+  if (base) for (let i = 0; i < base.length; i += 2) blocks.set(base[i], base[i + 1]);
+  const cache = new Map();
+  const RE = /^[a-z0-9_.\-]+:[a-z0-9_.\/\-]+(\[[a-z0-9_]+=[a-z0-9_]+(,[a-z0-9_]+=[a-z0-9_]+)*\])?$/;
+  function norm(b) {
+    let r = cache.get(b);
+    if (r) return r;
+    if (typeof b !== 'string') throw new Error('Block muss ein String sein, z. B. "stone_bricks" oder "oak_stairs[facing=north]" – bekommen: ' + b);
+    r = b.replace(/\s+/g, '').toLowerCase();
+    if (!r.split('[')[0].includes(':')) r = 'minecraft:' + r;
+    if (!RE.test(r)) throw new Error('Ungültige Block-Angabe: "' + b + '"');
+    cache.set(b, r);
+    return r;
+  }
+  const I = (v, n) => { if (!Number.isFinite(v)) throw new Error('Koordinate ' + n + ' ist keine Zahl: ' + v); return Math.round(v); };
+  function set(x, y, z, b) {
+    x = I(x, 'x'); y = I(y, 'y'); z = I(z, 'z');
+    blocks.set(x + ',' + y + ',' + z, norm(b));
+    if (blocks.size > limit) throw new Error('Zu viele Blöcke (> ' + limit + ')');
+  }
+  function range(a, b) { a = Math.round(a); b = Math.round(b); return a <= b ? [a, b] : [b, a]; }
+  function fill(x1, y1, z1, x2, y2, z2, b) {
+    const [xa, xb] = range(x1, x2), [ya, yb] = range(y1, y2), [za, zb] = range(z1, z2);
+    for (let x = xa; x <= xb; x++) for (let y = ya; y <= yb; y++) for (let z = za; z <= zb; z++) set(x, y, z, b);
+  }
+  function hollow(x1, y1, z1, x2, y2, z2, b) {
+    const [xa, xb] = range(x1, x2), [ya, yb] = range(y1, y2), [za, zb] = range(z1, z2);
+    for (let x = xa; x <= xb; x++) for (let y = ya; y <= yb; y++) for (let z = za; z <= zb; z++)
+      if (x === xa || x === xb || y === ya || y === yb || z === za || z === zb) set(x, y, z, b);
+  }
+  function walls(x1, y1, z1, x2, y2, z2, b) {
+    const [xa, xb] = range(x1, x2), [ya, yb] = range(y1, y2), [za, zb] = range(z1, z2);
+    for (let x = xa; x <= xb; x++) for (let y = ya; y <= yb; y++) for (let z = za; z <= zb; z++)
+      if (x === xa || x === xb || z === za || z === zb) set(x, y, z, b);
+  }
+  function line(x1, y1, z1, x2, y2, z2, b) {
+    const n = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1), Math.abs(z2 - z1), 1);
+    for (let i = 0; i <= n; i++) set(x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n, z1 + (z2 - z1) * i / n, b);
+  }
+  function ellipsoid(cx, cy, cz, rx, ry, rz, b, opts = {}) {
+    const h = opts.hollow, half = opts.half;
+    for (let x = Math.floor(-rx); x <= Math.ceil(rx); x++)
+      for (let y = Math.floor(-ry); y <= Math.ceil(ry); y++)
+        for (let z = Math.floor(-rz); z <= Math.ceil(rz); z++) {
+          if (half === 'top' && y < 0) continue;
+          if (half === 'bottom' && y > 0) continue;
+          const d = (x / (rx + .5)) ** 2 + (y / (ry + .5)) ** 2 + (z / (rz + .5)) ** 2;
+          if (d > 1) continue;
+          if (h) {
+            const di = (x / Math.max(rx - .5, .01)) ** 2 + (y / Math.max(ry - .5, .01)) ** 2 + (z / Math.max(rz - .5, .01)) ** 2;
+            if (di <= 1) continue;
+          }
+          set(cx + x, cy + y, cz + z, b);
+        }
+  }
+  function sphere(cx, cy, cz, r, b, opts) { ellipsoid(cx, cy, cz, r, r, r, b, opts); }
+  function cylinder(cx, y1, cz, r, h, b, opts = {}) {
+    for (let x = Math.floor(-r); x <= Math.ceil(r); x++)
+      for (let z = Math.floor(-r); z <= Math.ceil(r); z++) {
+        const d = Math.hypot(x, z);
+        if (d > r + .5) continue;
+        if (opts.hollow && d <= r - .5) continue;
+        for (let y = 0; y < h; y++) set(cx + x, y1 + y, cz + z, b);
+      }
+  }
+  function get(x, y, z) { return blocks.get(Math.round(x) + ',' + Math.round(y) + ',' + Math.round(z)) || null; }
+  function remove(x, y, z) { blocks.delete(Math.round(x) + ',' + Math.round(y) + ',' + Math.round(z)); }
+  function clear(x1, y1, z1, x2, y2, z2) { fill(x1, y1, z1, x2, y2, z2, 'air'); }
+  function replace(x1, y1, z1, x2, y2, z2, from, to) {
+    const f = norm(from), fName = f.split('[')[0], exact = f.includes('[');
+    const [xa, xb] = range(x1, x2), [ya, yb] = range(y1, y2), [za, zb] = range(z1, z2);
+    for (const [k, v] of blocks) {
+      const [x, y, z] = k.split(',').map(Number);
+      if (x < xa || x > xb || y < ya || y > yb || z < za || z > zb) continue;
+      if (exact ? v === f : v.split('[')[0] === fName) set(x, y, z, to);
+    }
+  }
+  function rng(seed = 1) {
+    let a = seed >>> 0;
+    return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  const api = { set, fill, hollow, walls, line, sphere, ellipsoid, cylinder, get, remove, clear, replace, rng };
+  return { api, blocks };
+}
+
+function runInline(code, limit, base) {
+  const b = createBuilder(limit, base);
+  const names = Object.keys(b.api);
+  new Function(...names, '"use strict";\n' + code)(...names.map(n => b.api[n]));
+  const out = [];
+  for (const [k, v] of b.blocks) out.push(k, v);
+  return out;
+}
+
+function parseBlock(s) {
+  const i = s.indexOf('[');
+  const name = i < 0 ? s : s.slice(0, i);
+  const props = {};
+  if (i >= 0) for (const kv of s.slice(i + 1, -1).split(',')) { const [k, v] = kv.split('='); props[k] = v; }
+  return { name, props };
+}
+
+// Blöcke, an die Zäune/Mauern/Scheiben NICHT andocken (keine volle Seitenfläche)
+const NONSOLID_RE = /(^air$|_air$|^water$|^lava$|stairs$|_slab$|torch$|^(soul_)?lantern$|^chain$|rail$|_door$|trapdoor$|button$|pressure_plate$|sign$|banner$|flower|sapling$|carpet$|pane$|_bars$|fence|_wall$|ladder$|vine|campfire$|candle|flower_pot$|^potted_|_head$|_skull$|_bed$|chest$|^lever$|tripwire|redstone_wire$|^snow$|^short_grass$|^tall_grass$|fern$|bush$|leaves$|cake$|anvil$|^bell$|scaffolding$|_rod$|hopper$|cauldron$|brewing_stand$|enchanting_table$|lectern$|grindstone$|stonecutter$|^composter$|^farmland$|^dirt_path$|_mushroom$|roots$|coral|kelp|seagrass$|^cactus$|^bamboo$|dripleaf|^azalea$|^flowering_azalea$|^cobweb$|glass$|^ice$)/;
+function kindOf(name) {
+  const n = name.split(':')[1] || name;
+  if (n.endsWith('glass_pane') || n === 'iron_bars') return 'pane';
+  if (n.endsWith('_fence')) return 'fence';
+  if (n.endsWith('_fence_gate')) return 'gate';
+  if (n.endsWith('_wall') && !n.includes('wall_')) return 'wall';
+  return null;
+}
+function isFullSolid(name) {
+  return !NONSOLID_RE.test(name.split(':')[1] || name);
+}
+
+// Zäune, Mauern, Scheiben und Gitter mit den Nachbarn verbinden (falls Claude es nicht selbst angegeben hat)
+function autoConnect(map) {
+  const DIRS = [['north', 0, -1], ['south', 0, 1], ['east', 1, 0], ['west', -1, 0]];
+  const updates = [];
+  for (const [k, v] of map) {
+    const { name, props } = parseBlock(v);
+    const kind = kindOf(name);
+    if (!kind || kind === 'gate' || DIRS.some(d => d[0] in props)) continue;
+    const [x, y, z] = k.split(',').map(Number);
+    const p = { ...props };
+    for (const [d, dx, dz] of DIRS) {
+      const nb = map.get((x + dx) + ',' + y + ',' + (z + dz));
+      let c = false;
+      if (nb) {
+        const nn = parseBlock(nb).name, nk = kindOf(nn), short = nn.split(':')[1];
+        if (kind === 'pane') c = nk === 'pane' || nk === 'wall' || isFullSolid(nn) || short.endsWith('glass');
+        else if (kind === 'fence') c = nk === 'fence' || nk === 'gate' || isFullSolid(nn);
+        else c = nk === 'wall' || nk === 'pane' || nk === 'gate' || isFullSolid(nn);
+      }
+      p[d] = kind === 'wall' ? (c ? 'low' : 'none') : String(c);
+    }
+    if (kind === 'wall' && !('up' in p)) {
+      const ns = DIRS.filter(d => p[d[0]] !== 'none').map(d => d[0]).sort().join();
+      p.up = String(!(ns === 'north,south' || ns === 'east,west'));
+    }
+    if (!('waterlogged' in p)) p.waterlogged = 'false';
+    updates.push([k, name + '[' + Object.entries(p).map(([a, b]) => a + '=' + b).join(',') + ']']);
+  }
+  for (const [k, v] of updates) map.set(k, v);
+}
+
+// Aus der Block-Liste eine normalisierte Struktur bauen (Koordinaten ab 0).
+// extra (optional, aus geladener Datei): { blockNbt: Map("x,y,z" -> {block, nbt}), entities: [typed compound] }
+function buildStructure(flat, extra) {
+  const map = new Map();
+  for (let i = 0; i < flat.length; i += 2) map.set(flat[i], flat[i + 1]);
+  if (!map.size) throw new Error('Der Code hat keine Blöcke gesetzt.');
+  autoConnect(map);
+  let mx = Infinity, my = Infinity, mz = Infinity, Mx = -Infinity, My = -Infinity, Mz = -Infinity;
+  if (extra?.size) { mx = my = mz = 0; [Mx, My, Mz] = extra.size.map(v => v - 1); }   // Originalmaße einer geladenen Datei beibehalten
+  const pos = [];
+  for (const k of map.keys()) {
+    const [x, y, z] = k.split(',').map(Number);
+    pos.push(x, y, z);
+    if (x < mx) mx = x; if (y < my) my = y; if (z < mz) mz = z;
+    if (x > Mx) Mx = x; if (y > My) My = y; if (z > Mz) Mz = z;
+  }
+  const palette = [], idx = new Map();
+  const n = map.size, xs = new Int32Array(n), ys = new Int32Array(n), zs = new Int32Array(n), st = new Int32Array(n);
+  const nbt = new Map();   // Index -> Block-Entity-Daten (nur für unveränderte Blöcke aus der geladenen Datei)
+  let i = 0;
+  for (const [k, v] of map) {
+    let s = idx.get(v);
+    if (s === undefined) { s = palette.length; idx.set(v, s); palette.push(parseBlock(v)); }
+    xs[i] = pos[3 * i] - mx; ys[i] = pos[3 * i + 1] - my; zs[i] = pos[3 * i + 2] - mz; st[i] = s;
+    const be = extra?.blockNbt?.get(k);
+    if (be && be.block === v) nbt.set(i, be.nbt);
+    i++;
+  }
+  const entities = (extra?.entities || []).map(e => shiftEntity(e, -mx, -my, -mz));
+  return { size: [Mx - mx + 1, My - my + 1, Mz - mz + 1], palette, xs, ys, zs, st, count: n, nbt, entities, offset: [mx, my, mz] };
+}
+function shiftEntity(e, dx, dy, dz) {
+  if (!dx && !dy && !dz) return e;
+  const c = structuredClone(e), d = [dx, dy, dz];
+  if (c.v.pos) c.v.pos.v.forEach((p, j) => p.v += d[j]);
+  if (c.v.blockPos) c.v.blockPos.v.forEach((p, j) => p.v += d[j]);
+  if (c.v.nbt?.v?.Pos) c.v.nbt.v.Pos.v.forEach((p, j) => p.v += d[j]);
+  return c;
+}
+
+// NBT lesen. Ergebnis ist "typisiert": { t: Tag-Typ, v: Wert } (Listen zusätzlich mit et = Element-Typ),
+// damit Block-Entity-Daten und Entities beim Export unverändert zurückgeschrieben werden können.
+function readNBT(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), dec = new TextDecoder();
+  let p = 0;
+  const str = () => { const n = dv.getUint16(p); p += 2; const s = dec.decode(bytes.subarray(p, p + n)); p += n; return s; };
+  function pay(t) {
+    let v;
+    switch (t) {
+      case 1: v = dv.getInt8(p); p += 1; return { t, v };
+      case 2: v = dv.getInt16(p); p += 2; return { t, v };
+      case 3: v = dv.getInt32(p); p += 4; return { t, v };
+      case 4: v = dv.getBigInt64(p); p += 8; return { t, v };
+      case 5: v = dv.getFloat32(p); p += 4; return { t, v };
+      case 6: v = dv.getFloat64(p); p += 8; return { t, v };
+      case 7: { const n = dv.getInt32(p); p += 4; v = bytes.slice(p, p + n); p += n; return { t, v }; }
+      case 8: return { t, v: str() };
+      case 9: { const et = dv.getInt8(p); p += 1; const n = dv.getInt32(p); p += 4; v = []; for (let i = 0; i < n; i++) v.push(pay(et)); return { t, et, v }; }
+      case 10: { v = {}; for (;;) { const tt = dv.getInt8(p); p += 1; if (tt === 0) break; const k = str(); v[k] = pay(tt); } return { t, v }; }
+      case 11: { const n = dv.getInt32(p); p += 4; v = []; for (let i = 0; i < n; i++) { v.push(dv.getInt32(p)); p += 4; } return { t, v }; }
+      case 12: { const n = dv.getInt32(p); p += 4; v = []; for (let i = 0; i < n; i++) { v.push(dv.getBigInt64(p)); p += 8; } return { t, v }; }
+      default: throw new Error('Unbekannter NBT-Tag ' + t + ' an Position ' + p);
+    }
+  }
+  const t = dv.getInt8(p); p += 1; str();
+  if (t !== 10) throw new Error('Keine NBT-Datei (Wurzel ist kein Compound).');
+  return pay(t);
+}
+async function gunzipMaybe(bytes) {
+  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return bytes;
+  const ds = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Uint8Array(await new Response(ds).arrayBuffer());
+}
+// Geladene Struktur-Datei -> Basis-Blöcke für den Builder + Zusatzdaten
+function structureFromNBT(root) {
+  const r = root.v;
+  if (!r.blocks || !(r.palette || r.palettes)) throw new Error('Das ist keine Struktur-Datei (palette/blocks fehlen). Unterstützt wird das .nbt-Format von Strukturblock und Create.');
+  const pal = (r.palette || r.palettes.v[0]).v.map(p => {
+    const name = p.v.Name.v, props = p.v.Properties ? Object.entries(p.v.Properties.v).map(([k, x]) => k + '=' + x.v) : [];
+    return props.length ? name + '[' + props.join(',') + ']' : name;
+  });
+  const flat = [], blockNbt = new Map();
+  for (const b of r.blocks.v) {
+    const [x, y, z] = b.v.pos.v.map(q => q.v), k = x + ',' + y + ',' + z, block = pal[b.v.state.v];
+    flat.push(k, block);
+    if (b.v.nbt) blockNbt.set(k, { block, nbt: b.v.nbt });
+  }
+  return { flat, blockNbt, entities: r.entities ? r.entities.v : [], dataVersion: r.DataVersion?.v, size: r.size.v.map(q => q.v) };
+}
+// Kompakte Beschreibung einer geladenen Struktur für Claude (Lauflängen entlang x)
+function describeForClaude(flat, size, maxChars = 60000) {
+  const counts = new Map(), rows = new Map();
+  for (let i = 0; i < flat.length; i += 2) {
+    const b = flat[i + 1];
+    counts.set(b, (counts.get(b) || 0) + 1);
+    if (b === 'minecraft:air') continue;
+    const [x, y, z] = flat[i].split(',').map(Number), rk = b + '|' + y + '|' + z;
+    (rows.get(rk) || rows.set(rk, []).get(rk)).push(x);
+  }
+  let out = `Size (x,y,z): ${size.join(' x ')}. Block counts:\n` + [...counts].sort((a, b) => b[1] - a[1]).map(([b, c]) => `${c}x ${b}`).join('\n');
+  const byBlock = new Map();
+  for (const [rk, xsArr] of rows) {
+    const [b, y, z] = rk.split('|');
+    xsArr.sort((a, c) => a - c);
+    const runs = [];
+    for (let j = 0; j < xsArr.length; j++) {
+      let e = j; while (e + 1 < xsArr.length && xsArr[e + 1] === xsArr[e] + 1) e++;
+      runs.push(xsArr[j] === xsArr[e] ? '' + xsArr[j] : xsArr[j] + '-' + xsArr[e]); j = e;
+    }
+    (byBlock.get(b) || byBlock.set(b, []).get(b)).push(`y${y} z${z} x${runs.join(',')}`);
+  }
+  let detail = '\n\nBlock positions (per block type; rows "y z x-runs"):\n';
+  for (const [b, list] of byBlock) detail += b + ': ' + list.join('; ') + '\n';
+  if (detail.length <= maxChars) out += detail;
+  else out += '\n\n(Structure too large to list every block; work from the size and block counts, and use get()/replace() to inspect and change it.)';
+  return out;
+}
+
+// NBT (Java Edition) schreiben: Struktur-Format wie vom Strukturblock / Create
+// keep(i) -> false lässt Block i beim Export weg (Blockliste: "Export" abgewählt)
+function encodeNBT(s, dataVersion, keep = () => true) {
+  let buf = new Uint8Array(1 << 16), len = 0;
+  const enc = new TextEncoder();
+  const ensure = n => { if (len + n > buf.length) { let nb = new Uint8Array(Math.max(buf.length * 2, len + n)); nb.set(buf); buf = nb; } };
+  const u8 = v => { ensure(1); buf[len++] = v & 255; };
+  const i16 = v => { ensure(2); buf[len++] = (v >> 8) & 255; buf[len++] = v & 255; };
+  const i32 = v => { ensure(4); buf[len++] = (v >>> 24) & 255; buf[len++] = (v >>> 16) & 255; buf[len++] = (v >>> 8) & 255; buf[len++] = v & 255; };
+  const str = t => { const b = enc.encode(t); i16(b.length); ensure(b.length); buf.set(b, len); len += b.length; };
+  const tag = (type, name) => { u8(type); str(name); };
+  const f32 = new DataView(new ArrayBuffer(8));
+  function payload(n) {   // typisierten Wert schreiben (aus readNBT)
+    switch (n.t) {
+      case 1: u8(n.v); break;
+      case 2: i16(n.v); break;
+      case 3: i32(n.v); break;
+      case 4: f32.setBigInt64(0, BigInt(n.v)); for (let j = 0; j < 8; j++) u8(f32.getUint8(j)); break;
+      case 5: f32.setFloat32(0, n.v); for (let j = 0; j < 4; j++) u8(f32.getUint8(j)); break;
+      case 6: f32.setFloat64(0, n.v); for (let j = 0; j < 8; j++) u8(f32.getUint8(j)); break;
+      case 7: i32(n.v.length); ensure(n.v.length); buf.set(n.v, len); len += n.v.length; break;
+      case 8: str(n.v); break;
+      case 9: u8(n.v.length ? n.et : 0); i32(n.v.length); n.v.forEach(payload); break;
+      case 10: for (const [k, c] of Object.entries(n.v)) { tag(c.t, k); payload(c); } u8(0); break;
+      case 11: i32(n.v.length); n.v.forEach(i32); break;
+      case 12: i32(n.v.length); n.v.forEach(x => payload({ t: 4, v: x })); break;
+    }
+  }
+  let kept = 0;
+  for (let i = 0; i < s.count; i++) if (keep(i)) kept++;
+  tag(10, '');
+  tag(3, 'DataVersion'); i32(dataVersion);
+  tag(9, 'size'); u8(3); i32(3); s.size.forEach(i32);
+  tag(9, 'palette'); u8(10); i32(s.palette.length);
+  for (const p of s.palette) {
+    tag(8, 'Name'); str(p.name);
+    const e = Object.entries(p.props);
+    if (e.length) { tag(10, 'Properties'); for (const [k, v] of e) { tag(8, k); str(v); } u8(0); }
+    u8(0);
+  }
+  tag(9, 'blocks'); u8(10); i32(kept);
+  for (let i = 0; i < s.count; i++) {
+    if (!keep(i)) continue;
+    tag(9, 'pos'); u8(3); i32(3); i32(s.xs[i]); i32(s.ys[i]); i32(s.zs[i]);
+    tag(3, 'state'); i32(s.st[i]);
+    const be = s.nbt?.get(i);
+    if (be) { tag(10, 'nbt'); payload(be); }
+    u8(0);
+  }
+  const ents = s.entities || [];
+  tag(9, 'entities'); u8(10); i32(ents.length); ents.forEach(payload);
+  u8(0);
+  return buf.slice(0, len);
+}
+async function gzip(bytes) {
+  const cs = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+  return new Uint8Array(await new Response(cs).arrayBuffer());
+}
+
+function extractCode(text) {
+  const re = /```(?:javascript|js)?\s*\n([\s\S]*?)```/g;
+  let m, last = null;
+  while ((m = re.exec(text))) last = m[1];
+  return last;
+}
+
+const SYSTEM_PROMPT = `You are a master Minecraft builder and a careful JavaScript programmer. The user describes a structure; you design it and write JavaScript that places every block. The result is saved as a Minecraft Java Edition structure (.nbt), loaded with Create's schematic table or a structure block.
+
+# Design
+- Every build must be an original design made for this request. Don't fall back on a generic box house or a stock layout; work out shape, massing, silhouette, materials and details from what the user asked for, and let the description drive unusual choices.
+- Build like a skilled human builder: depth in facades (pillars, inset windows, beams, overhangs, buttresses), a palette of 3-6 blocks with texture variation (e.g. stone bricks mixed with cracked/mossy variants, logs framing planks), roofs built from stairs and slabs with eaves, varied heights, and asymmetry where it helps.
+- Furnish interiors that people would enter (floors, lighting, furniture made from stairs/slabs/trapdoors, storage, beds, crafting blocks). Light everything well enough to stop mobs spawning.
+- Respect physics and safety: no floating parts without support, nothing flammable within 3 blocks of lava or fire, liquids fully contained.
+- Respect the requested size and Minecraft version (only use blocks that exist in that version).
+
+# Coordinates
+x = east, y = up, z = south. y = 0 is the lowest layer (foundation/ground level). The main entrance faces north (towards negative z) unless the user says otherwise. Coordinates may be any integers; the result is shifted to start at 0.
+
+# API (these functions are globals in your code)
+- set(x, y, z, block)
+- fill(x1, y1, z1, x2, y2, z2, block): solid cuboid, corners inclusive
+- hollow(x1, y1, z1, x2, y2, z2, block): cuboid shell
+- walls(x1, y1, z1, x2, y2, z2, block): only the four vertical sides
+- line(x1, y1, z1, x2, y2, z2, block)
+- sphere(cx, cy, cz, r, block, {hollow, half: 'top'|'bottom'})
+- ellipsoid(cx, cy, cz, rx, ry, rz, block, {hollow, half})
+- cylinder(cx, y, cz, r, height, block, {hollow}): vertical
+- clear(x1, y1, z1, x2, y2, z2): fills with air (air blocks are saved and clear terrain when placed; use this for interiors)
+- replace(x1, y1, z1, x2, y2, z2, from, to): from without [props] matches any state
+- get(x, y, z): block string or null; remove(x, y, z): unset
+- rng(seed): returns a seeded random() function (Math.random also works)
+Later calls overwrite earlier ones, so build coarse to fine: shell first, then clear the interior, then add details.
+
+# Block strings
+Use Java block IDs with optional states in command syntax: "stone_bricks", "spruce_stairs[facing=north,half=bottom]", "oak_log[axis=x]". The minecraft: prefix is optional. Unspecified states take their defaults. Get orientations right:
+- Stairs: facing = the side of the tall back. Walking towards the facing direction goes up. For a roof slope that rises to the south, use facing=south. half=top gives upside-down stairs. shape is optional (straight by default; use inner_left etc. for corners if you want).
+- Slabs: type=bottom|top|double. Logs/pillars: axis=x|y|z.
+- Doors: two blocks, lower and upper, with matching facing and hinge: "oak_door[facing=north,half=lower,hinge=left]" plus half=upper above. facing is the direction you face when walking out through the door from inside.
+- Beds: two blocks with part=foot and part=head. The head is placed in the facing direction from the foot.
+- wall_torch / wall lanterns / ladders: facing points away from the block they are attached to. lantern[hanging=true] hangs under a block. Chests, furnaces, barrels: facing is the side with the opening.
+- Trapdoors: facing, half=top|bottom, open=true|false.
+- Glass panes, iron bars, fences and walls connect to their neighbours automatically; don't give them direction states.
+- Water and lava: "water" / "lava" are source blocks. The Create schematicannon usually skips fluids, so keep fluid use purposeful and mention it.
+
+# Output
+1. A short description in the user's language (2-5 sentences): the design idea, the key features, and anything the player must do after placing it (e.g. fill in water).
+2. Exactly one fenced \`\`\`javascript code block with the complete code. Use helper functions and loops; keep it readable. The code must run on its own: no imports, no DOM, no async.
+When the user asks for changes, output the complete updated code again, not a diff.`;
+// </core>
+</script>
+
+<script type="module">
+import Anthropic from '@anthropic-ai/sdk';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+// ---------- Einstellungen ----------
+for (const [id, m] of Object.entries(MODELS)) $('model').add(new Option(`${m.label} – $${m.in} / $${m.out}`, id));
+// Preise: Anthropic-Listenpreise (Stand November 2026), bei Änderungen in MODELS oben anpassen
+for (const [id, v] of Object.entries(VERSIONS)) $('version').add(new Option(v.label, id));
+$('version').value = '1.21.1';
+const savedKey = store.get('nbtgen.key');
+if (savedKey) { $('apiKey').value = savedKey; $('rememberKey').checked = true; }
+for (const k of ['model', 'effort', 'version', 'size']) {
+  const v = store.get('nbtgen.' + k);
+  if (v && [...$(k).options].some(o => o.value === v)) $(k).value = v;
+  $(k).addEventListener('change', () => { store.set('nbtgen.' + k, $(k).value); updateEstimate(); });
+}
+$('rememberKey').addEventListener('change', () => { if ($('rememberKey').checked) store.set('nbtgen.key', $('apiKey').value.trim()); else store.del('nbtgen.key'); });
+$('apiKey').addEventListener('input', () => { if ($('rememberKey').checked) store.set('nbtgen.key', $('apiKey').value.trim()); });
+
+// ---------- Kosten ----------
+let history = [];          // Gesprächsverlauf mit Claude (für Änderungen)
+let sessionCost = Number(store.get('nbtgen.sessionCost') || 0);
+const usd = v => v < 0.01 ? '$' + v.toFixed(4) : '$' + v.toFixed(v < 1 ? 3 : 2);
+function updateSessionCost() {
+  $('sessionCost').innerHTML = `<h3>Bisher ausgegeben</h3><b>${usd(sessionCost)}</b> in diesem Browser <button id="resetCost" style="float:right;padding:2px 8px;font-size:11px">zurücksetzen</button>`;
+  $('resetCost').onclick = () => { sessionCost = 0; store.set('nbtgen.sessionCost', '0'); updateSessionCost(); };
+}
+function estimateInputTokens(extra) {
+  const chars = SYSTEM_PROMPT.length + JSON.stringify(history.map(m => typeof m.content === 'string' ? m.content
+    : m.content.filter(b => b.type === 'text').map(b => b.text).join(''))).length + (extra || '').length + 400;
+  return Math.round(chars / 3.6);
+}
+function updateEstimate() {
+  const m = MODELS[$('model').value], [lo, hi] = EFFORT_OUT[$('effort').value];
+  const b = activeBase();
+  const extra = history.length ? $('refine').value : $('prompt').value + (b ? baseDescription(b) : '');
+  const inTok = estimateInputTokens(extra);
+  const costLo = (inTok * m.in + lo * m.out) / 1e6, costHi = (inTok * m.in + hi * m.out) / 1e6;
+  $('estimate').innerHTML = `<h3>Geschätzte Kosten pro Anfrage</h3><b>${usd(costLo)} – ${usd(costHi)}</b><br>
+    <span class="muted">~${inTok.toLocaleString('de')} Eingabe-Tokens à $${m.in}/1M, ${lo.toLocaleString('de')}–${hi.toLocaleString('de')} Ausgabe-Tokens à $${m.out}/1M (inkl. Denken). Höherer Aufwand = gründlicher, aber teurer.</span>`;
+}
+$('prompt').addEventListener('input', updateEstimate);
+$('refine').addEventListener('input', updateEstimate);
+
+// ---------- Claude ----------
+let currentStream = null;
+function baseDescription(b) {
+  if (!b.desc) b.desc = describeForClaude(b.flat, b.size);
+  return `An existing structure ("${b.name}") is already loaded into the builder before your code runs, occupying coordinates 0..size-1. `
+    + `Modify or extend it as requested using the API; don't rebuild it from scratch unless asked. Blocks you leave untouched keep their block-entity data (chest contents, mod data). `
+    + `It may contain modded blocks; keep their IDs and states as they are.\n\nLoaded structure:\n${b.desc}\n\n`;
+}
+function userMessage(text, first) {
+  const v = VERSIONS[$('version').value], b = activeBase();
+  if (!first) return `Change request (Minecraft ${v.label}):\n${text}`;
+  return `Minecraft version: ${v.label}.\nSize: ${b ? 'Keep the existing structure\'s scale unless the request says otherwise.' : SIZE_HINT[$('size').value]}\n\n`
+    + (b ? baseDescription(b) : '') + `Request:\n${text}`;
+}
+function echoContent(content) {
+  // Nach einem serverseitigen Fallback: Denk-/Tool-Blöcke vor dem letzten Fallback-Marker nicht zurückschicken
+  const last = content.map(b => b.type).lastIndexOf('fallback');
+  if (last < 0) return content;
+  return content.filter((b, i) => i > last || b.type === 'text');
+}
+
+async function ask(text, first) {
+  const key = $('apiKey').value.trim();
+  if (!key) { setStatus('<span class="err">Bitte zuerst deinen API-Key eintragen.</span>'); return; }
+  const modelId = $('model').value, m = MODELS[modelId];
+  const pending = [...history, { role: 'user', content: userMessage(text, first) }];
+  const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
+  const params = {
+    model: modelId,
+    max_tokens: 64000,
+    thinking: { type: 'adaptive', display: 'summarized' },
+    output_config: { effort: $('effort').value },
+    system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+    messages: pending,
+  };
+  if (m.fallbacks) { params.betas = ['server-side-fallback-2026-07-01']; params.fallbacks = 'default'; }
+
+  busy(true);
+  $('statusBox').style.display = '';
+  $('thinking').textContent = '';
+  setStatus('Verbinde mit Claude …');
+  let outChars = 0, thinkChars = 0;
+  try {
+    const stream = client.beta.messages.stream(params);
+    currentStream = stream;
+    for await (const ev of stream) {
+      if (ev.type === 'content_block_delta') {
+        if (ev.delta.type === 'thinking_delta') { thinkChars += ev.delta.thinking.length; $('thinking').textContent += ev.delta.thinking; $('thinking').scrollTop = 1e9; }
+        else if (ev.delta.type === 'text_delta') outChars += ev.delta.text.length;
+        setStatus(thinkChars && !outChars ? 'Claude plant den Entwurf …' : `Claude schreibt den Bau-Code … (~${Math.round(outChars / 3.6).toLocaleString('de')} Tokens)`);
+      }
+    }
+    const msg = await stream.finalMessage();
+    const cost = usageCost(msg.usage, modelId);
+    sessionCost += cost; store.set('nbtgen.sessionCost', String(sessionCost)); updateSessionCost();
+    const u = msg.usage;
+    const servedBy = msg.model && msg.model !== modelId ? ` <span class="warn">(beantwortet von ${msg.model} per Fallback)</span>` : '';
+    $('lastCost').innerHTML = `Diese Anfrage: <b>${usd(cost)}</b>${servedBy}<br><span class="muted">${(u.input_tokens + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0)).toLocaleString('de')} Eingabe- / ${u.output_tokens.toLocaleString('de')} Ausgabe-Tokens</span>`;
+
+    if (msg.stop_reason === 'refusal') {
+      setStatus('<span class="err">Claude hat diese Anfrage abgelehnt. Formuliere sie bitte um.</span>');
+      return;
+    }
+    const textOut = msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+    const code = extractCode(textOut);
+    history = [...pending, { role: 'assistant', content: echoContent(msg.content) }];
+    $('resultBox').style.display = '';
+    $('refineBox').style.display = '';
+    $('desc').textContent = textOut.replace(/```[\s\S]*?(```|$)/g, '').trim() || '–';
+    if (!code) {
+      setStatus(msg.stop_reason === 'max_tokens'
+        ? '<span class="err">Die Antwort wurde abgeschnitten (Token-Limit). Versuche eine kleinere Struktur oder niedrigeren Aufwand.</span>'
+        : '<span class="err">Claude hat keinen Code geliefert.</span>');
+      return;
+    }
+    $('code').value = code;
+    if (first) $('fileName').value = suggestName(text);
+    setStatus('Führe Bau-Code aus …');
+    await runCode(code);
+  } catch (e) {
+    if (e instanceof Anthropic.APIUserAbortError) setStatus('Abgebrochen.');
+    else if (e instanceof Anthropic.AuthenticationError) setStatus('<span class="err">API-Key ungültig (401). Bitte prüfen.</span>');
+    else if (e instanceof Anthropic.PermissionDeniedError) setStatus('<span class="err">Kein Zugriff auf dieses Modell (403).</span>');
+    else if (e instanceof Anthropic.RateLimitError) setStatus('<span class="err">Rate-Limit erreicht (429). Kurz warten und erneut versuchen.</span>');
+    else if (e instanceof Anthropic.APIError) setStatus(`<span class="err">API-Fehler ${e.status ?? ''}: ${escapeHtml(e.message)}</span>`);
+    else setStatus(`<span class="err">${escapeHtml(String(e.message || e))}</span>`);
+  } finally {
+    currentStream = null;
+    busy(false);
+    updateEstimate();
+  }
+}
+
+function suggestName(t) {
+  return (t.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').split('_').slice(0, 4).join('_')) || 'struktur';
+}
+function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function setStatus(html) { $('status').innerHTML = html; }
+function busy(b) {
+  for (const id of ['generate', 'refineBtn', 'newBtn', 'fixBtn', 'runCode']) $(id).disabled = b;
+  $('abort').style.display = b ? '' : 'none';
+}
+$('abort').onclick = () => currentStream?.abort();
+$('generate').onclick = () => {
+  const t = $('prompt').value.trim();
+  if (!t) { $('statusBox').style.display = ''; setStatus('<span class="err">Bitte beschreibe zuerst, was gebaut werden soll.</span>'); return; }
+  history = [];
+  ask(t, true);
+};
+$('refineBtn').onclick = () => { const t = $('refine').value.trim(); if (t) { ask(t, false); $('refine').value = ''; } };
+$('newBtn').onclick = () => { history = []; $('refineBox').style.display = 'none'; $('resultBox').style.display = 'none'; $('prompt').focus(); updateEstimate(); };
+let lastError = null;
+$('fixBtn').onclick = () => ask(`Running your code failed with this error:\n${lastError}\nPlease fix it and output the complete corrected code.`, false);
+
+// ---------- Code ausführen (Web Worker, ohne Zugriff auf Seite und Key) ----------
+const WORKER_SRC = `const createBuilder = ${createBuilder.toString()};
+self.onmessage = (e) => {
+  try {
+    const b = createBuilder(e.data.limit, e.data.base);
+    const names = Object.keys(b.api);
+    new Function(...names, '"use strict";\\n' + e.data.code)(...names.map(n => b.api[n]));
+    const out = [];
+    for (const [k, v] of b.blocks) out.push(k, v);
+    self.postMessage({ ok: true, out });
+  } catch (err) { self.postMessage({ ok: false, error: String(err && err.stack || err) }); }
+};`;
+function execCode(code, baseFlat) {
+  return new Promise((resolve, reject) => {
+    let w;
+    try { w = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }))); }
+    catch { try { resolve(runInline(code, BLOCK_LIMIT, baseFlat)); } catch (e) { reject(e); } return; }
+    const t = setTimeout(() => { w.terminate(); reject(new Error('Zeitüberschreitung: Der Code lief länger als 30 Sekunden.')); }, 30000);
+    w.onmessage = e => { clearTimeout(t); w.terminate(); e.data.ok ? resolve(e.data.out) : reject(new Error(e.data.error)); };
+    w.onerror = e => { clearTimeout(t); w.terminate(); reject(new Error(e.message)); };
+    w.postMessage({ code, limit: BLOCK_LIMIT, base: baseFlat });
+  });
+}
+
+let structure = null;
+async function runCode(code) {
+  $('fixBtn').style.display = 'none';
+  try {
+    const b = activeBase();
+    const flat = await execCode(code, b?.flat);
+    showStructure(buildStructure(flat, b));
+    setStatus('<span class="ok">Fertig.</span> Vorschau drehen: ziehen · zoomen: scrollen · verschieben: rechte Maustaste.');
+    $('runMsg').textContent = '';
+    return true;
+  } catch (e) {
+    lastError = String(e.message || e).slice(0, 2000);
+    setStatus(`<span class="err">Fehler im Bau-Code:\n${escapeHtml(lastError)}</span>`);
+    $('runMsg').textContent = 'Fehler – siehe Status links.';
+    if (history.length) $('fixBtn').style.display = '';
+    return false;
+  }
+}
+$('runCode').onclick = () => { setStatus('Führe Bau-Code aus …'); $('statusBox').style.display = ''; runCode($('code').value); };
+
+function showStructure(s) {
+  structure = s;
+  structure.names = s.palette.map(p => p.name);
+  $('download').disabled = false;
+  $('empty').style.display = 'none';
+  $('layer').disabled = false;
+  setupLayerRange(true);
+  renderBlockList();
+  renderPreview(true);
+}
+
+// ---------- Vorhandene .nbt laden (Drag & Drop / Datei öffnen) ----------
+let base = null;
+const activeBase = () => (base && $('useBase').checked ? base : null);
+async function loadFile(file) {
+  $('statusBox').style.display = '';
+  try {
+    setStatus('Lese ' + escapeHtml(file.name) + ' …');
+    const raw = await gunzipMaybe(new Uint8Array(await file.arrayBuffer()));
+    const loaded = structureFromNBT(readNBT(raw));
+    base = { ...loaded, name: file.name };
+    const dvMatch = Object.entries(VERSIONS).find(([, v]) => v.dv === loaded.dataVersion);
+    if (dvMatch) $('version').value = dvMatch[0];
+    else if (loaded.dataVersion) {
+      VERSIONS.orig = { dv: loaded.dataVersion, label: `wie Originaldatei (DataVersion ${loaded.dataVersion})` };
+      if (!$('version').querySelector('option[value=orig]')) $('version').add(new Option('Original (DV ' + loaded.dataVersion + ')', 'orig'));
+      else $('version').querySelector('option[value=orig]').text = 'Original (DV ' + loaded.dataVersion + ')';
+      $('version').value = 'orig';
+    }
+    $('baseBox').style.display = '';
+    $('baseInfo').innerHTML = `<b>${escapeHtml(file.name)}</b><br><span class="muted">${loaded.size.join('×')} · ${(loaded.flat.length / 2).toLocaleString('de')} Blöcke · ${loaded.blockNbt.size} Block-Entities · ${loaded.entities.length} Entities · DataVersion ${loaded.dataVersion ?? '?'}</span>`;
+    $('useBase').checked = true;
+    $('fileName').value = file.name.replace(/\.nbt$/i, '') + '_neu';
+    $('prompt').placeholder = 'Was soll an dieser Struktur geändert werden? z. B. „Baue einen zweiten Stock mit Spitzdach darauf“ oder „ersetze alle Eichenbretter durch Fichte“';
+    history = []; $('refineBox').style.display = 'none'; $('resultBox').style.display = 'none';
+    $('code').value = '';
+    showStructure(buildStructure(loaded.flat, base));
+    setStatus(`<span class="ok">Geladen.</span> Du kannst sie ansehen, filtern, wieder exportieren oder Claude Änderungen beschreiben.`);
+    updateEstimate();
+  } catch (e) {
+    setStatus(`<span class="err">Datei konnte nicht gelesen werden: ${escapeHtml(String(e.message || e))}</span>`);
+  }
+}
+$('openFile').onclick = () => $('fileInput').click();
+$('fileInput').onchange = () => { if ($('fileInput').files[0]) loadFile($('fileInput').files[0]); $('fileInput').value = ''; };
+let dragDepth = 0;
+addEventListener('dragenter', e => { if ([...e.dataTransfer.types].includes('Files')) { dragDepth++; document.body.classList.add('dragging'); } });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging');
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+$('removeBase').onclick = () => {
+  base = null; $('baseBox').style.display = 'none';
+  $('prompt').placeholder = 'z. B. Eine verwinkelte Fischerhütte auf Stelzen aus Fichtenholz, mit Steg, Bootsanleger, Laternen und einem kleinen Räucherschuppen';
+  updateEstimate();
+};
+$('useBase').onchange = updateEstimate;
+
+// ---------- Ebenen ----------
+const DIR_LABELS = { 0: ['von Westen', 'von Osten'], 1: ['von unten', 'von oben'], 2: ['von Norden', 'von Süden'] };
+function setupLayerRange(reset) {
+  const ax = Number($('layerAxis').value), [a, b] = DIR_LABELS[ax];
+  const dirVal = $('layerDir').value || 'asc';
+  $('layerDir').innerHTML = '';
+  $('layerDir').add(new Option(a, 'asc')); $('layerDir').add(new Option(b, 'desc'));
+  $('layerDir').value = dirVal;
+  if (!structure) return;
+  const max = structure.size[ax] - 1;
+  $('layer').max = max;
+  if (reset) $('layer').value = $('layerSingle').checked ? 0 : ($('layerDir').value === 'asc' ? max : 0);
+  updateLayerLabel();
+}
+function updateLayerLabel() {
+  const v = Number($('layer').value), ax = 'XYZ'[$('layerAxis').value], max = Number($('layer').max);
+  const single = $('layerSingle').checked, asc = $('layerDir').value === 'asc';
+  $('layerVal').textContent = single ? `${ax} = ${v}` : asc ? `${ax} 0–${v}` : `${ax} ${v}–${max}`;
+}
+function layerVisible() {
+  const ax = Number($('layerAxis').value), v = Number($('layer').value);
+  const single = $('layerSingle').checked, asc = $('layerDir').value === 'asc';
+  const arr = structure[['xs', 'ys', 'zs'][ax]];
+  return single ? i => arr[i] === v : asc ? i => arr[i] <= v : i => arr[i] >= v;
+}
+for (const id of ['layerAxis', 'layerDir', 'layerSingle']) $(id).addEventListener('change', () => { setupLayerRange(true); renderPreview(false); });
+$('layer').addEventListener('input', () => { updateLayerLabel(); renderPreview(false); });
+setupLayerRange(true);
+
+// ---------- Blockliste: Anzahl je Block, ausblenden / vom Export ausschließen ----------
+const hiddenView = new Set(), hiddenExport = new Set();
+$('toggleList').onclick = () => { $('blockList').classList.toggle('open'); $('toggleList').classList.toggle('active'); };
+function renderBlockList() {
+  if (!structure) return;
+  const counts = new Map();
+  for (let i = 0; i < structure.count; i++) { const n = structure.names[structure.st[i]]; counts.set(n, (counts.get(n) || 0) + 1); }
+  const q = $('blSearch').value.trim().toLowerCase();
+  const rows = [...counts].sort((a, b) => b[1] - a[1]).filter(([n]) => !q || n.includes(q));
+  $('blRows').innerHTML = '';
+  for (const [n, c] of rows) {
+    const row = document.createElement('div');
+    row.className = 'blRow' + (hiddenView.has(n) || hiddenExport.has(n) ? ' off' : '');
+    const short = n.startsWith('minecraft:') ? n.slice(10) : n;
+    row.innerHTML = `<div class="blName" title="${escapeHtml(n)}"><span class="sw" style="background:#${colorFor(n).getHexString()}"></span><span class="n">${escapeHtml(short)}</span><span class="c">${c.toLocaleString('de')}</span></div>`;
+    const view = Object.assign(document.createElement('input'), { type: 'checkbox', checked: !hiddenView.has(n), title: 'In der Vorschau anzeigen' });
+    const exp = Object.assign(document.createElement('input'), { type: 'checkbox', checked: !hiddenExport.has(n), title: 'In die .nbt übernehmen' });
+    view.onchange = () => { view.checked ? hiddenView.delete(n) : hiddenView.add(n); row.classList.toggle('off', hiddenView.has(n) || hiddenExport.has(n)); renderPreview(false); updateListFoot(counts); };
+    exp.onchange = () => { exp.checked ? hiddenExport.delete(n) : hiddenExport.add(n); row.classList.toggle('off', hiddenView.has(n) || hiddenExport.has(n)); updateListFoot(counts); };
+    row.append(view, exp);
+    $('blRows').append(row);
+  }
+  updateListFoot(counts);
+}
+function updateListFoot(counts) {
+  let ex = 0, hv = 0;
+  for (const [n, c] of counts) { if (hiddenExport.has(n)) ex += c; if (hiddenView.has(n)) hv += c; }
+  $('blFoot').textContent = `${counts.size} Blocktypen · ${hv.toLocaleString('de')} ausgeblendet · ${ex.toLocaleString('de')} vom Export ausgeschlossen`;
+  const s = structure.size;
+  $('stats').textContent = `${s[0]}×${s[1]}×${s[2]} · ${structure.count.toLocaleString('de')} Blöcke · ${counts.size} Blocktypen`
+    + (structure.nbt.size ? ` · ${structure.nbt.size} Block-Entities` : '') + (structure.entities.length ? ` · ${structure.entities.length} Entities` : '')
+    + (ex ? ` · Export ohne ${ex.toLocaleString('de')} Blöcke` : '');
+}
+$('blSearch').addEventListener('input', renderBlockList);
+function setAllVisible(show) {
+  const q = $('blSearch').value.trim().toLowerCase();
+  for (const n of new Set(structure?.names || [])) if (!q || n.includes(q)) show ? hiddenView.delete(n) : hiddenView.add(n);
+  renderBlockList(); renderPreview(false);
+}
+$('blShowAll').onclick = () => setAllVisible(true);
+$('blHideAll').onclick = () => setAllVisible(false);
+
+$('download').onclick = async () => {
+  if (!structure) return;
+  const names = structure.names, st = structure.st;
+  const bytes = await gzip(encodeNBT(structure, VERSIONS[$('version').value].dv, hiddenExport.size ? i => !hiddenExport.has(names[st[i]]) : undefined));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+  a.download = (suggestName($('fileName').value) || 'struktur') + '.nbt';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+};
+
+// ---------- Tabs ----------
+$('tab3d').onclick = () => { $('tab3d').classList.add('active'); $('tabCode').classList.remove('active'); $('codeWrap').style.display = 'none'; $('canvasWrap').style.display = ''; };
+$('tabCode').onclick = () => { $('tabCode').classList.add('active'); $('tab3d').classList.remove('active'); $('codeWrap').style.display = 'flex'; $('canvasWrap').style.display = 'none'; };
+
+// ---------- 3D-Vorschau ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+$('canvasWrap').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9cc4e4);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x556070, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(0.6, 1, 0.35);
+scene.add(sun);
+let meshes = [], grid = null;
+function resize() {
+  const r = $('view').getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  renderer.domElement.style.width = r.width + 'px'; renderer.domElement.style.height = r.height + 'px';
+  camera.aspect = r.width / Math.max(r.height, 1); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe($('view'));
+(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+
+const DYES = { white: '#e9ecec', orange: '#f07613', magenta: '#bd44b3', light_blue: '#3aafd9', yellow: '#f8c527', lime: '#70b919',
+  pink: '#ed8dac', gray: '#3e4447', light_gray: '#8e8e86', cyan: '#158991', purple: '#792aac', blue: '#35399d', brown: '#724728',
+  green: '#546d1b', red: '#a12722', black: '#141519' };
+const COLORS = {
+  stone: '#7d7d7d', cobblestone: '#7a7a7a', mossy_cobblestone: '#6e7a5e', stone_bricks: '#7a7a7a', mossy_stone_bricks: '#6d7a5f',
+  cracked_stone_bricks: '#757575', chiseled_stone_bricks: '#777', smooth_stone: '#9e9e9e', andesite: '#888889', polished_andesite: '#848786',
+  diorite: '#bcbcbc', polished_diorite: '#c0c0c2', granite: '#956756', polished_granite: '#9a6a59', deepslate: '#505053',
+  cobbled_deepslate: '#4d4d50', bricks: '#966153', mud_bricks: '#8a6b51', sandstone: '#d8cb9b', smooth_sandstone: '#dccf9f',
+  red_sandstone: '#b5612c', sand: '#dbcf9e', red_sand: '#be6621', gravel: '#837f7e', dirt: '#866043', coarse_dirt: '#77553b',
+  grass_block: '#6a9e45', podzol: '#5b4022', mud: '#3c3a3d', clay: '#a0a6b3', snow_block: '#f9fefe', snow: '#f9fefe', ice: '#91b7fd',
+  packed_ice: '#8db4fa', blue_ice: '#74a8fd', water: '#3f76e4', lava: '#d96415', obsidian: '#0f0b19', crying_obsidian: '#200a3c',
+  glass: '#c0dbe0', tinted_glass: '#2c2731', iron_block: '#dcdcdc', gold_block: '#f6d03e', diamond_block: '#62ede4', emerald_block: '#2acb58',
+  copper_block: '#c06c50', quartz_block: '#ebe5de', smooth_quartz: '#ece6df', netherrack: '#6f3534', nether_bricks: '#2c161a',
+  blackstone: '#2a2328', polished_blackstone_bricks: '#302a30', basalt: '#4c4c51', end_stone: '#dbde9e', purpur_block: '#a97ea9',
+  prismarine: '#63a294', dark_prismarine: '#335b4b', terracotta: '#985e43', bookshelf: '#6b5131', hay_block: '#a68b0c',
+  glowstone: '#ffda74', sea_lantern: '#acc8be', shroomlight: '#f09347', torch: '#ffd75a', wall_torch: '#ffd75a', lantern: '#ffcf6a',
+  chain: '#3d4250', iron_bars: '#8a8c8c', chest: '#a77e36', barrel: '#7c5a33', crafting_table: '#7d5a37', furnace: '#666',
+  campfire: '#f39b37', calcite: '#dfe0dc', tuff: '#6c6d66', amethyst_block: '#8662bf', moss_block: '#596d2d', dripstone_block: '#866b5c',
+  bone_block: '#e1dcc4', pumpkin: '#c67414', melon: '#6f9128', cactus: '#5b8a2b', farmland: '#5a3a20', dirt_path: '#94793f',
+  rail: '#8c7c5c', ladder: '#9b7a46', redstone_block: '#af1805', lapis_block: '#1f438c', sponge: '#c3c04a', target: '#e2aa9c',
+  scaffolding: '#c2a56a', anvil: '#454545', cauldron: '#4a4a4a', bell: '#f0c43a', lectern: '#a7834f', composter: '#7b5a32',
+  wheat: '#c9a63c', carrots: '#e0892a', potatoes: '#b49a45', beetroots: '#8a2f2f', sugar_cane: '#94c05e', vine: '#4a7a22',
+  // Create & Co. (Teilstring-Treffer)
+  brass: '#c9a24a', andesite_casing: '#a3a596', copper_casing: '#b56b48', shaft: '#8f8f8f', cogwheel: '#8a6f4a', gearbox: '#9a9686',
+  girder: '#565b62', industrial_iron: '#5d6064', chassis: '#a58c5c', belt: '#3a3a3a', fluid_tank: '#b98a52', item_vault: '#7d6e55',
+  copycat: '#a7a091', deployer: '#a3a596', drill: '#9a9a9a', mechanical: '#a3a596',
+};
+const WOOD = { oak: '#b8945f', spruce: '#735532', birch: '#c8b77a', jungle: '#a07350', acacia: '#a85a32', dark_oak: '#4c3218',
+  mangrove: '#763731', cherry: '#e2b3ac', bamboo: '#c4af52', crimson: '#653147', warped: '#2b6963', pale_oak: '#e3d9d5' };
+const colorCache = new Map();
+function colorFor(name) {
+  let c = colorCache.get(name);
+  if (c) return c;
+  const n = name.split(':')[1] || name;
+  let hex = COLORS[n];
+  if (!hex) {
+    const dye = Object.keys(DYES).sort((a, b) => b.length - a.length).find(k => n.startsWith(k + '_'));
+    if (dye) hex = DYES[dye];
+  }
+  if (!hex) {
+    const wood = Object.keys(WOOD).sort((a, b) => b.length - a.length).find(k => n.includes(k));
+    if (wood) hex = n.includes('log') || n.includes('wood') && !n.includes('stripped') ? shade(WOOD[wood], -0.35) : WOOD[wood];
+    if (n.includes('leaves')) hex = n.includes('cherry') ? '#e8a6c4' : n.includes('azalea') ? '#5f7a2c' : '#4b7a2a';
+  }
+  if (!hex) {
+    const base = Object.keys(COLORS).sort((a, b) => b.length - a.length).find(k => n.includes(k));
+    hex = base ? COLORS[base] : null;
+  }
+  if (!hex) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0; hex = '#' + new THREE.Color().setHSL((h % 360) / 360, .35, .55).getHexString(); }
+  c = new THREE.Color(hex);
+  colorCache.set(name, c);
+  return c;
+}
+function shade(hex, f) { const c = new THREE.Color(hex); c.multiplyScalar(1 + f); return '#' + c.getHexString(); }
+const isTransparent = n => /glass|water|ice$|^minecraft:ice/.test(n) && !n.includes('tinted');
+
+function piecesFor(name, props) {
+  const n = name.split(':')[1] || name;
+  const f = props.facing;
+  const off = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+  if (n === 'air' || n.endsWith('_air')) return [];
+  if (n.endsWith('_slab')) return props.type === 'double' ? [[.5, .5, .5, 1, 1, 1]] : [[.5, props.type === 'top' ? .75 : .25, .5, 1, .5, 1]];
+  if (n.endsWith('_stairs')) {
+    const top = props.half === 'top', [dx, dz] = off[f] || [0, -1];
+    return [[.5, top ? .75 : .25, .5, 1, .5, 1], [.5 + dx * .25, top ? .25 : .75, .5 + dz * .25, dx ? .5 : 1, .5, dz ? .5 : 1]];
+  }
+  const kind = kindOf(name);
+  if (kind === 'pane' || kind === 'fence' || kind === 'wall') {
+    const post = kind === 'pane' ? .125 : kind === 'fence' ? .25 : .5, arm = kind === 'pane' ? .125 : kind === 'fence' ? .125 : .375;
+    const h = kind === 'pane' ? 1 : kind === 'fence' ? .4 : .8, ay = kind === 'fence' ? .6 : h / 2;
+    const out = [[.5, .5, .5, post, 1, post]];
+    for (const [d, [dx, dz]] of Object.entries(off)) {
+      if (props[d] && props[d] !== 'false' && props[d] !== 'none') out.push([.5 + dx * .25, ay, .5 + dz * .25, dx ? .5 : arm, h, dz ? .5 : arm]);
+    }
+    return out;
+  }
+  if (n.endsWith('_carpet') || n.endsWith('pressure_plate') || n.includes('rail') || n === 'redstone_wire' || n === 'snow' || n.endsWith('moss_carpet'))
+    return [[.5, .03, .5, 1, .06, 1]];
+  if (n.endsWith('_trapdoor')) {
+    if (props.open === 'true') { const [dx, dz] = off[f] || [0, 1]; return [[.5 - dx * .4, .5, .5 - dz * .4, dx ? .19 : 1, 1, dz ? .19 : 1]]; }
+    return [[.5, props.half === 'top' ? .9 : .1, .5, 1, .19, 1]];
+  }
+  if (n.endsWith('_door')) { const [dx, dz] = off[f] || [0, 1]; return [[.5 - dx * .4, .5, .5 - dz * .4, dx ? .19 : 1, 1, dz ? .19 : 1]]; }
+  if (n === 'ladder' || n.endsWith('wall_sign') || n.endsWith('wall_banner') || n === 'vine') { const [dx, dz] = off[f] || [0, 1]; return [[.5 - dx * .45, .5, .5 - dz * .45, dx ? .1 : .9, .9, dz ? .1 : .9]]; }
+  if (n.endsWith('torch') || n.endsWith('lantern') && n !== 'sea_lantern' || n.includes('candle') || n.endsWith('button') || n === 'lever'
+    || n.includes('flower') || n.includes('sapling') || n.includes('tulip') || n === 'poppy' || n === 'dandelion' || n.endsWith('_pot') || n === 'flower_pot')
+    return [[.5, props.hanging === 'true' ? .6 : .3, .5, .3, .6, .3]];
+  if (n === 'chain' || n === 'end_rod' || n === 'lightning_rod') return [[.5, .5, .5, .15, 1, .15]];
+  if (n.endsWith('chest')) return [[.5, .44, .5, .875, .875, .875]];
+  if (n.endsWith('_bed')) return [[.5, .28, .5, 1, .56, 1]];
+  if (n === 'water' || n === 'lava') return [[.5, .44, .5, 1, .875, 1]];
+  if (n.endsWith('_sign') || n.endsWith('_banner') || n === 'campfire' || n === 'soul_campfire') return [[.5, .25, .5, .8, .5, .8]];
+  if (n === 'short_grass' || n === 'grass' || n === 'fern' || n.endsWith('_bush') || n === 'tall_grass') return [[.5, .4, .5, .7, .8, .7]];
+  return [[.5, .5, .5, 1, 1, 1]];
+}
+
+function renderPreview(fitCamera) {
+  if (!structure) return;
+  for (const m of meshes) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
+  meshes = [];
+  const s = structure, inLayer = layerVisible();
+  const shown = s.palette.map(p => !hiddenView.has(p.name));
+  const vis = i => shown[s.st[i]] && inLayer(i);
+  const occ = new Set();
+  const full = s.palette.map(p => { const pc = piecesFor(p.name, p.props); return pc.length === 1 && pc[0][3] === 1 && pc[0][4] === 1 && pc[0][5] === 1 && !isTransparent(p.name); });
+  const K = (x, y, z) => (x * 4096 + y) * 4096 + z;
+  for (let i = 0; i < s.count; i++) if (full[s.st[i]] && vis(i)) occ.add(K(s.xs[i], s.ys[i], s.zs[i]));
+  const pieces = s.palette.map(p => piecesFor(p.name, p.props));
+  const opaque = [], trans = [];
+  for (let i = 0; i < s.count; i++) {
+    const x = s.xs[i], y = s.ys[i], z = s.zs[i], st = s.st[i];
+    if (!vis(i)) continue;
+    if (full[st] && occ.has(K(x + 1, y, z)) && occ.has(K(x - 1, y, z)) && occ.has(K(x, y + 1, z)) && occ.has(K(x, y - 1, z))
+      && occ.has(K(x, y, z + 1)) && occ.has(K(x, y, z - 1))) continue;
+    const t = isTransparent(s.palette[st].name);
+    for (const pc of pieces[st]) (t ? trans : opaque).push(x, y, z, st, pc);
+  }
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
+  const cx = s.size[0] / 2, cz = s.size[2] / 2;
+  function makeMesh(list, material) {
+    const n = list.length / 5;
+    if (!n) return;
+    const mesh = new THREE.InstancedMesh(geo.clone(), material, n);
+    for (let j = 0; j < n; j++) {
+      const x = list[5 * j], y = list[5 * j + 1], z = list[5 * j + 2], st = list[5 * j + 3], pc = list[5 * j + 4];
+      v.set(x + pc[0] - cx, y + pc[1], z + pc[2] - cz); sc.set(pc[3], pc[4], pc[5]);
+      mtx.compose(v, q, sc); mesh.setMatrixAt(j, mtx);
+      mesh.setColorAt(j, colorFor(s.palette[st].name));
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    scene.add(mesh); meshes.push(mesh);
+  }
+  makeMesh(opaque, new THREE.MeshLambertMaterial());
+  makeMesh(trans, new THREE.MeshLambertMaterial({ transparent: true, opacity: .45, depthWrite: false }));
+  if (grid) scene.remove(grid);
+  const gs = Math.ceil(Math.max(s.size[0], s.size[2]) * 1.4 + 8);
+  grid = new THREE.GridHelper(gs, gs, 0x5a7a5a, 0x7a9a7a);
+  grid.position.y = -0.001;
+  scene.add(grid);
+  if (fitCamera) {
+    const r = Math.max(...s.size);
+    controls.target.set(0, s.size[1] * 0.4, 0);
+    camera.position.set(r * 1.1, s.size[1] * 0.4 + r * 0.8, -r * 1.3);
+    camera.far = r * 20 + 100; camera.updateProjectionMatrix();
+  }
+}
+updateEstimate();
+updateSessionCost();
+</script>
+</body>
+</html>
