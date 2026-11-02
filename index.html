@@ -1355,6 +1355,7 @@ const idb = {
   },
   putMany(entries) { return this.tx('readwrite', st => { for (const [k, v] of entries) st.put(v, k); }); },
   clear() { return this.tx('readwrite', st => st.clear()); },
+  deletePrefix(prefix) { return this.tx('readwrite', st => st.delete(IDBKeyRange.bound(prefix, prefix + '\uffff'))); },
   async loadAll(map) {
     const db = await this.open();
     await new Promise((res, rej) => {
@@ -1441,6 +1442,17 @@ function mojangVersion(v = $('version').value) {
   const dv = VERSIONS.orig.dv;
   return Object.keys(VERSIONS).find(k => k !== 'orig' && VERSIONS[k].dv <= dv) || '1.21.1';
 }
+// Welche Minecraft-Version haben die gespeicherten Vanilla-Texturen?
+function vanillaVersion() {
+  const s = texSources.find(s => s.kind === 'vanilla' || /^minecraft/i.test(s.name));
+  return s ? s.version || (s.name.match(/(\d+\.\d+(?:\.\d+)?)/) || [])[1] || null : null;
+}
+async function removeVanilla() {
+  for (const k of [...assets.keys()]) if (k.startsWith('minecraft/')) assets.delete(k);
+  texSources = texSources.filter(s => !(s.kind === 'vanilla' || /^minecraft/i.test(s.name)));
+  assets.set('__sources', JSON.stringify(texSources));
+  try { await idb.deletePrefix('minecraft/'); await idb.putMany([['__sources', assets.get('__sources')]]); } catch {}
+}
 async function loadVanilla(ver, quiet) {
   texProgress(`<span class="spinner"></span>Suche Minecraft ${escapeHtml(ver)} bei Mojang …`);
   const man = await (await fetch('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json')).json();
@@ -1448,6 +1460,7 @@ async function loadVanilla(ver, quiet) {
   if (!v) throw new Error(`Version ${ver} gibt es bei Mojang nicht`);
   const client = (await (await fetch(v.url)).json()).downloads.client;
   const blob = await downloadBlob(client.url, `Minecraft ${ver} (${(client.size / 1e6).toFixed(0)} MB)`);
+  if (hasVanilla()) await removeVanilla();   // andere Version ersetzen, damit Blocknamen und Modelle zusammenpassen
   return importPack(blob, `Minecraft ${ver} (Mojang)`, { kind: 'vanilla', version: ver }, quiet);
 }
 async function loadCreate(ver, quiet) {
@@ -1472,8 +1485,12 @@ async function autoTextures() {
   autoRunning = true;
   try {
     await assetsReady;
-    const ver = mojangVersion();
+    const ver = mojangVersion(), have = vanillaVersion();
     if (!hasVanilla()) await loadVanilla(ver, true);
+    else if (have && have !== ver) {
+      toast(`Lade Texturen für Minecraft ${ver}, passend zur Struktur (bisher ${have}).`);
+      await loadVanilla(ver, true);
+    }
     if (structure?.names.some(n => n.startsWith('create:')) && !hasCreate()) await loadCreate(ver, true);
   } catch (e) {
     texProgress(`<span class="err">${escapeHtml(e.message || e)}</span>`);
@@ -1542,9 +1559,11 @@ function loadModel(id, depth = 0) {
   modelCache.set(id, m);
   return m;
 }
+// Texturverweis auflösen; neuere Versionen erlauben auch Objekte wie { "sprite": "block/x", "force_translucent": true }
 function resolveTex(m, ref) {
-  let r = ref;
-  for (let i = 0; i < 12 && r && r.startsWith('#'); i++) r = m.textures[r.slice(1)];
+  const str = v => typeof v === 'string' ? v : v && typeof v.sprite === 'string' ? v.sprite : null;
+  let r = str(ref);
+  for (let i = 0; i < 12 && r && r.startsWith('#'); i++) r = str(m.textures[r.slice(1)]);
   return r && !r.startsWith('#') ? r : null;
 }
 function matchWhen(w, props) {
@@ -1552,9 +1571,11 @@ function matchWhen(w, props) {
   if (w.AND) return w.AND.every(x => matchWhen(x, props));
   return Object.entries(w).every(([k, v]) => String(v).split('|').includes(props[k]));
 }
+// Umbenannte Blöcke (z. B. 1.21.9: chain → iron_chain; 1.20.3: grass → short_grass), falls Texturen einer anderen Version geladen sind
+const RENAMED = { chain: 'iron_chain', iron_chain: 'chain', grass: 'short_grass', short_grass: 'grass' };
 function stateModels(name, props) {
   const [ns, n] = rid(name);
-  const bs = json(`${ns}/blockstates/${n}.json`);
+  const bs = json(`${ns}/blockstates/${n}.json`) || (ns === 'minecraft' && RENAMED[n] ? json(`${ns}/blockstates/${RENAMED[n]}.json`) : null);
   if (!bs) return null;
   const out = [];
   if (bs.variants) {
@@ -1614,7 +1635,11 @@ function rotVariant(p, ref, o) {
 function stateGeom(name, props) {
   const key = name + JSON.stringify(props);
   let g = geomCache.get(key);
-  if (!g) { g = (texSources.length && modelGeom(name, props)) || fallbackGeom(name, props, null); geomCache.set(key, g); }
+  if (!g) {
+    try { g = texSources.length ? modelGeom(name, props) : null; } catch (e) { console.warn('Modell nicht lesbar:', name, e); g = null; }   // ein ungewöhnliches Modell darf nicht alles blockieren
+    g = g || fallbackGeom(name, props, null);
+    geomCache.set(key, g);
+  }
   return g;
 }
 const INVISIBLE = /^(air|cave_air|void_air|structure_void|barrier|light|moving_piston)$/;
