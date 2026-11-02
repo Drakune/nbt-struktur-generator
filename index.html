@@ -150,7 +150,8 @@
   .bl-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .bl-name .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bl-name .c { color: var(--faint); margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; padding-left: 6px; }
-  .sw { width: 20px; height: 20px; border-radius: 5px; flex: none; image-rendering: pixelated; background-size: cover; box-shadow: inset 0 0 0 1px #0005; }
+  .sw { width: 22px; height: 22px; border-radius: 5px; flex: none; image-rendering: pixelated; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .sw.solid { box-shadow: inset 0 0 0 1px #0005; width: 18px; height: 18px; margin: 2px; }
   .bl-row.off .n { color: var(--faint); text-decoration: line-through; }
   .eye { width: 30px; height: 28px; border: 0; background: none; border-radius: 7px; color: var(--muted); display: grid; place-items: center; justify-self: center; }
   .eye:hover { background: var(--surface3); color: var(--text); }
@@ -1506,7 +1507,11 @@ async function initPreview() {
   controls.enableDamping = true;
   new ResizeObserver(resize).observe($('view'));
   resize();
-  (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+  (function loop() {
+    requestAnimationFrame(loop); controls.update();
+    if (gridHelper) gridHelper.visible = camera.position.y > 0;   // von unten würde das Gitter durch die Unterseite flackern
+    renderer.render(scene, camera);
+  })();
   if (structure) { await prepareRender(); renderBlockList(); renderPreview(true); }
 }
 function resize() {
@@ -1531,15 +1536,23 @@ async function prepareRender() {
   let S = 16;
   for (const im of imgs.values()) S = Math.max(S, Math.min(im.width, 64));
   const list = [...imgs.keys()], cols = Math.ceil(Math.sqrt(list.length + 1)), rows = Math.ceil((list.length + 1) / cols);
+  // Jede Zelle ist doppelt so groß wie die Textur: die Textur liegt in der Mitte, rundherum wird sie
+  // gekachelt fortgesetzt. So laufen Mipmaps (gegen Flimmern auf Entfernung) nicht in Nachbartexturen.
+  const C = S * 2, P = S / 2;
   const canvas = document.createElement('canvas');
-  canvas.width = cols * S; canvas.height = rows * S;
+  canvas.width = cols * C; canvas.height = rows * C;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, S, S);      // Zelle 0: weiß für einfarbige Ersatzblöcke
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, C, C);      // Zelle 0: weiß für einfarbige Ersatzblöcke
   const info = new Map();
   list.forEach((k, i) => {
-    const cell = i + 1, x = (cell % cols) * S, y = Math.floor(cell / cols) * S, im = imgs.get(k);
-    ctx.drawImage(im, 0, 0, im.width, Math.min(im.width, im.height), x, y, S, S);   // animierte Texturen: erstes Bild
+    const cell = i + 1, cx0 = (cell % cols) * C, cy0 = Math.floor(cell / cols) * C, im = imgs.get(k);
+    const x = cx0 + P, y = cy0 + P;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(cx0, cy0, C, C); ctx.clip();
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
+      ctx.drawImage(im, 0, 0, im.width, Math.min(im.width, im.height), x + dx * S, y + dy * S, S, S);   // animierte Texturen: erstes Bild
+    ctx.restore();
     const d = ctx.getImageData(x, y, S, S).data;
     let zero = 0, part = 0;
     for (let j = 3; j < d.length; j += 4) { if (d[j] === 0) zero++; else if (d[j] < 250) part++; }
@@ -1561,25 +1574,61 @@ async function prepareRender() {
   let tex = null;
   if (THREE) {
     tex = new THREE.CanvasTexture(canvas);
-    tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false;
+    tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestMipmapLinearFilter; tex.generateMipmaps = true;
+    tex.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
     tex.colorSpace = THREE.SRGBColorSpace;
   }
-  prep = { geoms, info, S, cols, W: canvas.width, H: canvas.height, occl, tex, canvas, thumbs };
+  prep = { geoms, info, S, C, P, cols, W: canvas.width, H: canvas.height, occl, tex, canvas, thumbs };
 }
+// Inventar-Symbol wie im Spiel: volle Blöcke als Würfel (oben, links, rechts), sonst flach – jeweils mit Biom-Färbung
 function thumbFor(name) {
   if (!prep || !texSources.length) return null;
   if (prep.thumbs.has(name)) return prep.thumbs.get(name);
-  let url = null;
   const i = structure.names.indexOf(name), g = i >= 0 ? prep.geoms[i] : null;
-  const q = g && (g.quads.find(q => q.tex && !q.tint && (q.dir === 'north' || q.dir === 'south') && prep.info.has(q.tex)) || g.quads.find(q => q.tex && prep.info.has(q.tex)));
-  if (q) {
-    const { cell } = prep.info.get(q.tex), c = document.createElement('canvas');
-    c.width = c.height = prep.S;
-    c.getContext('2d').drawImage(prep.canvas, (cell % prep.cols) * prep.S, Math.floor(cell / prep.cols) * prep.S, prep.S, prep.S, 0, 0, prep.S, prep.S);
+  const ok = q => q.tex && prep.info.has(q.tex);
+  let url = null;
+  if (g && g.quads.some(ok)) {
+    const pick = (...dirs) => { for (const d of dirs) { const q = g.quads.find(q => ok(q) && q.full && q.dir === d); if (q) return q; } return g.quads.find(ok); };
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    if (g.fullCube && !g.fallback) {
+      drawFace(ctx, pick('up'), name, [1, .5, -1, .5, 16, 0], 1, true);
+      drawFace(ctx, pick('north', 'south', 'west', 'east'), name, [1, .5, 0, 1, 0, 8], .8, true);
+      drawFace(ctx, pick('east', 'west', 'south', 'north'), name, [1, -.5, 0, 1, 16, 16], .62, true);
+    } else {
+      const q = g.quads.find(q => ok(q) && !q.full && (q.dir === 'north' || q.dir === 'south')) || pick('north', 'south', 'up');
+      drawFace(ctx, q, name, [2, 0, 0, 2, 0, 0], 1, false);
+    }
     url = c.toDataURL();
   }
   prep.thumbs.set(name, url);
   return url;
+}
+function drawFace(ctx, q, name, m, shadeF, crop) {
+  const S = prep.S, { cell } = prep.info.get(q.tex);
+  let sx = (cell % prep.cols) * prep.C + prep.P, sy = Math.floor(cell / prep.cols) * prep.C + prep.P, sw = S, sh = S;
+  if (crop) {   // nur den Teil der Textur, den diese Fläche zeigt
+    const [u1, v1, u2, v2] = q.uv;
+    sx += Math.min(u1, u2) / 16 * S; sy += Math.min(v1, v2) / 16 * S;
+    sw = Math.max(Math.abs(u2 - u1), .5) / 16 * S; sh = Math.max(Math.abs(v2 - v1), .5) / 16 * S;
+  }
+  const t = document.createElement('canvas');
+  t.width = t.height = 16;
+  const tc = t.getContext('2d');
+  tc.imageSmoothingEnabled = false;
+  tc.drawImage(prep.canvas, sx, sy, sw, sh, 0, 0, 16, 16);
+  const tint = q.tint ? tintFor(name) : null;
+  if (tint || shadeF < 1) {
+    if (tint) { tc.globalCompositeOperation = 'multiply'; tc.fillStyle = tint; tc.fillRect(0, 0, 16, 16); }
+    if (shadeF < 1) { tc.globalCompositeOperation = 'source-atop'; tc.fillStyle = `rgba(0,0,0,${1 - shadeF})`; tc.fillRect(0, 0, 16, 16); }
+    tc.globalCompositeOperation = 'destination-in';   // ursprüngliche Transparenz wiederherstellen
+    tc.drawImage(prep.canvas, sx, sy, sw, sh, 0, 0, 16, 16);
+  }
+  ctx.setTransform(...m);
+  ctx.drawImage(t, 0, 0);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 function renderPreview(fitCamera) {
@@ -1598,7 +1647,7 @@ function renderPreview(fitCamera) {
   const at = (x, y, z) => x < 0 || y < 0 || z < 0 || x >= X || y >= Y || z >= Z ? 0 : useGrid ? grid[gi(x, y, z)] : (grid.get(gi(x, y, z)) || 0);
   const B = { opaque: [], cut: [], trans: [] };
   for (const k in B) B[k] = { pos: [], uv: [], col: [], idx: [], n: 0 };
-  const { info, S, cols, W, H, occl, geoms } = prep, names = structure.names;
+  const { info, S, C, P, cols, W, H, occl, geoms } = prep, names = structure.names;
   const col = new THREE.Color(), tintCache = new Map(), baseCache = new Map();
   const cx = X / 2, cz = Z / 2, E = 0.02;
   for (const i of visible) {
@@ -1627,7 +1676,7 @@ function renderPreview(fitCamera) {
       const b = B[cls], base = b.n;
       const [u1, v1, u2, v2] = q.uv, r = ((q.rot / 90) | 0) & 3;
       const uvs = [[u1, v1], [u2, v1], [u2, v2], [u1, v2]];
-      const ox = (cell % cols) * S, oy = Math.floor(cell / cols) * S;
+      const ox = (cell % cols) * C + P, oy = Math.floor(cell / cols) * C + P;
       for (let k = 0; k < 4; k++) {
         const p = c[k];
         b.pos.push(x + p[0] / 16 - cx, y + p[1] / 16, z + p[2] / 16 - cz);
@@ -1660,7 +1709,7 @@ function renderPreview(fitCamera) {
   if (gridHelper) { scene.remove(gridHelper); gridHelper.geometry.dispose(); gridHelper.material.dispose(); }
   const gs = Math.ceil(Math.max(X, Z) * 1.4 + 8);
   gridHelper = new THREE.GridHelper(gs, gs, 0x46536a, 0x2c3445);
-  gridHelper.position.y = -0.002;
+  gridHelper.position.y = -0.03;
   scene.add(gridHelper);
   if (fitCamera) fitView();
   if (!autoRunning) updateTexState();
@@ -1673,7 +1722,7 @@ function fitView() {
   const s = structure.size, r = Math.max(...s);
   controls.target.set(0, s[1] * 0.4, 0);
   camera.position.set(r * 1.1, s[1] * 0.4 + r * 0.8, -r * 1.3);
-  camera.far = r * 20 + 200; camera.updateProjectionMatrix();
+  camera.near = Math.max(0.05, r / 300); camera.far = r * 20 + 200; camera.updateProjectionMatrix();   // Tiefenauflösung passend zur Größe
 }
 
 // ---------- Ebenen ----------
@@ -1722,7 +1771,7 @@ function renderBlockList() {
     const off = () => hiddenView.has(n) || hiddenExport.has(n);
     row.className = 'bl-row' + (off() ? ' off' : '');
     const short = n.startsWith('minecraft:') ? n.slice(10) : n, th = thumbFor(n);
-    row.innerHTML = `<div class="bl-name" title="${escapeHtml(n)}"><span class="sw" style="${th ? `background-image:url(${th})` : `background:${colorFor(n)}`}"></span><span class="n">${escapeHtml(short.replace(/_/g, ' '))}</span><span class="c">${c.toLocaleString('de')}</span></div>`;
+    row.innerHTML = `<div class="bl-name" title="${escapeHtml(n)}"><span class="sw${th ? '' : ' solid'}" style="${th ? `background-image:url(${th})` : `background:${colorFor(n)}`}"></span><span class="n">${escapeHtml(short.replace(/_/g, ' '))}</span><span class="c">${c.toLocaleString('de')}</span></div>`;
     const view = document.createElement('button'), exp = document.createElement('button');
     view.className = exp.className = 'eye';
     const paint = () => {
