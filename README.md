@@ -17,7 +17,9 @@ Oder `index.html` herunterladen und per Doppelklick öffnen. Installation oder S
 - **Blockliste**: Anzahl je Blocktyp mit Textur-Vorschau. Jeder Typ lässt sich in der Vorschau ausblenden oder vom Export ausschließen.
 - **Aufgeräumte Oberfläche**: Beide Seitenleisten lassen sich ein- und ausklappen. API-Key und Kosten stehen in den Einstellungen. Dunkles Design (Standard) und helles Design zum Umschalten.
 - **Funktioniert auch mit Fingerprinting-Schutz** (Firefox resistFingerprinting, LibreWolf, Brave): Texturen werden selbst dekodiert statt über Canvas ausgelesen.
-- **Code-Ansicht**: Den Bau-Code selbst bearbeiten und lokal neu ausführen, das kostet nichts.
+- **Auswählen, verschieben, gruppieren**: Klick wählt einen Block, Doppelklick einen zusammenhängenden Teil (z. B. ein ganzes Gebäude), mit dem Auswahl-Werkzeug ziehst du einen Rahmen. Die Auswahl lässt sich mit dem Pfeil-Gizmo, den Pfeiltasten (Bild ↑/↓ für die Höhe) oder Buttons verschieben, duplizieren und löschen. Rückgängig und Wiederholen mit Strg+Z / Strg+Y.
+- **Gruppen**: Claude teilt jeden Entwurf in benannte Gruppen auf (Fundament, Wände, Dach …). In der Gruppenübersicht kannst du sie umbenennen, auswählen, verschieben und ausblenden oder aus einer Auswahl neue Gruppen bilden. Die Gruppen werden in der `.nbt` mitgespeichert (zusätzlicher Eintrag `nbtgen_groups`, den Minecraft und Create ignorieren) und beim Öffnen wieder eingelesen.
+- **Luft-Blöcke** werden standardmäßig entfernt. Unter „Optionen“ lassen sie sich behalten, wenn sie beim Platzieren das Gelände freiräumen sollen.
 - **Alle Java-Versionen von 1.16 bis 26.3** (die DataVersion wird passend gesetzt).
 
 ## Texturen
